@@ -7,7 +7,10 @@ const EMBEDDING_MODEL = 'text-embedding-004';
 
 export const geminiService = {
   getEmbedding: async (text: string): Promise<number[]> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) throw new Error("Gemini API Key is missing. Please set API_KEY or GEMINI_API_KEY in your .env.local file.");
+
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.embedContent({
       model: EMBEDDING_MODEL,
       contents: [{ parts: [{ text }] }],
@@ -29,7 +32,10 @@ export const geminiService = {
     profile: UserProfile,
     relevantChunks: DocumentChunk[]
   ): Promise<{ text: string; sources: string[] }> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) throw new Error("Gemini API Key is missing.");
+
+    const ai = new GoogleGenAI({ apiKey });
 
     const systemInstruction = `
       You are VORA Assist, an Intelligent Partner designed for high-performance research and context-aware assistance.
@@ -43,7 +49,7 @@ export const geminiService = {
       ### KNOWLEDGE RETRIEVAL
       Use these specific excerpts from the user's local memory to answer accurately:
       
-      ${relevantChunks.length > 0 
+      ${relevantChunks.length > 0
         ? relevantChunks.map(chunk => `[Source: ${chunk.docTitle}]: ${chunk.text}`).join('\n\n')
         : 'NO RELEVANT DOCUMENTS FOUND locally. Use your internal knowledge base but clarify it is general info.'
       }
@@ -76,7 +82,7 @@ export const geminiService = {
 
       const text = response.text || "I'm sorry, I couldn't generate a response.";
       const sources = Array.from(new Set(relevantChunks.map(c => c.docTitle)));
-      
+
       return { text, sources };
     } catch (error: any) {
       console.error("Gemini Error:", error);

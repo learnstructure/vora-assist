@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { Document, DocumentChunk } from '../types';
+import { Document, DocumentChunk, AIProvider } from '../types';
 import { storageService } from '../services/storageService';
 import { geminiService } from '../services/geminiService';
+import { groqService } from '../services/groqService';
 import * as pdfjs from 'pdfjs-dist';
 import mammoth from 'mammoth';
 
@@ -13,9 +14,10 @@ interface KnowledgeBaseProps {
   documents: Document[];
   setDocuments: React.Dispatch<React.SetStateAction<Document[]>>;
   setChunks: React.Dispatch<React.SetStateAction<DocumentChunk[]>>;
+  provider: AIProvider;
 }
 
-const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, setChunks }) => {
+const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, setChunks, provider }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState('');
 
@@ -54,13 +56,12 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
     if (!files || files.length === 0) return;
 
     setIsProcessing(true);
-    
-    // Explicitly cast Array.from(files) to File[] to fix type inference errors where 'file' was inferred as 'unknown'
+
     for (const file of Array.from(files) as File[]) {
       try {
         setProgress(`Extracting ${file.name}...`);
         const text = await extractText(file);
-        
+
         const docId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
         const newDoc: Document = {
           id: docId,
@@ -72,13 +73,18 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
           createdAt: Date.now(),
         };
 
-        setProgress(`Vectorizing ${file.name}...`);
+        setProgress(`Vectorizing ${file.name} via ${provider.toUpperCase()}...`);
         const textChunks = chunkText(text);
         const chunkObjects: DocumentChunk[] = [];
 
         for (let i = 0; i < textChunks.length; i++) {
-          setProgress(`Vectorizing ${file.name} (Part ${i+1}/${textChunks.length})...`);
-          const embedding = await geminiService.getEmbedding(textChunks[i]);
+          setProgress(`Indexing ${file.name} (Part ${i + 1}/${textChunks.length})...`);
+
+          // Use the active provider for embeddings
+          const embedding = provider === 'groq'
+            ? await groqService.getEmbedding(textChunks[i])
+            : await geminiService.getEmbedding(textChunks[i]);
+
           chunkObjects.push({
             id: `${docId}-chunk-${i}`,
             docId,
@@ -91,12 +97,12 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
         await storageService.saveDocument(newDoc, chunkObjects);
         setDocuments(prev => [newDoc, ...prev]);
         setChunks(prev => [...prev, ...chunkObjects]);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error processing file:", err);
-        alert(`Failed to process ${file.name}`);
+        alert(`Failed to process ${file.name}: ${err.message}`);
       }
     }
-    
+
     setIsProcessing(false);
     setProgress('');
     e.target.value = '';
@@ -106,18 +112,16 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
     if (confirm("Permanently delete this document from memory?")) {
       try {
         await storageService.deleteDocument(id);
-        // Update local state only after DB success
         setDocuments(prev => prev.filter(d => d.id !== id));
         setChunks(prev => prev.filter(c => c.docId !== id));
       } catch (err) {
-        console.error("Deletion failed in DB:", err);
-        alert("Failed to delete document. Please try again.");
+        console.error("Deletion failed:", err);
       }
     }
   };
 
   const wipeMemory = async () => {
-    if (confirm("WARNING: Wipe all documents from local memory? This cannot be undone.")) {
+    if (confirm("Wipe all documents?")) {
       try {
         setIsProcessing(true);
         setProgress('Wiping Memory...');
@@ -140,25 +144,25 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
         <div>
           <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tighter mb-2 uppercase">Memory Bank</h1>
-          <p className="text-zinc-500 text-sm font-medium">Manage and clean PI's local intelligence context.</p>
+          <p className="text-zinc-500 text-sm font-medium">Manage your local intelligence context using {provider.toUpperCase()}.</p>
         </div>
-        
+
         <div className="flex gap-3 w-full sm:w-auto">
           {documents.length > 0 && (
-            <button 
+            <button
               onClick={wipeMemory}
               className="px-6 py-3 rounded-2xl text-[11px] font-black tracking-widest uppercase border border-red-900/50 text-red-500 hover:bg-red-500/5 transition-all"
             >
               Wipe Bank
             </button>
           )}
-          <label className={`flex-1 sm:flex-none text-center cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-2xl text-[11px] font-black tracking-widest uppercase transition-all shadow-xl shadow-blue-500/20 active:scale-95 ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
-            {isProcessing ? 'Syncing...' : 'Upload Data'}
-            <input 
-              type="file" 
-              className="hidden" 
-              accept=".txt,.md,.pdf,.docx" 
-              multiple 
+          <label className={`flex-1 sm:flex-none text-center cursor-pointer ${provider === 'gemini' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-orange-600 hover:bg-orange-500'} text-white px-8 py-3 rounded-2xl text-[11px] font-black tracking-widest uppercase transition-all shadow-xl active:scale-95 ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
+            {isProcessing ? 'Indexing...' : 'Upload Data'}
+            <input
+              type="file"
+              className="hidden"
+              accept=".txt,.md,.pdf,.docx"
+              multiple
               onChange={handleFileUpload}
               disabled={isProcessing}
             />
@@ -167,16 +171,9 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
       </div>
 
       {isProcessing && (
-        <div className="mb-8 p-6 bg-blue-950/20 border border-blue-500/20 rounded-[1.5rem] flex items-center gap-4 animate-pulse">
-          <div className="w-6 h-6 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-[11px] text-blue-300 font-black tracking-widest uppercase">{progress}</span>
-        </div>
-      )}
-
-      {documents.length > 0 && (
-        <div className="mb-4 px-4 flex justify-between items-center text-[10px] text-zinc-600 font-black uppercase tracking-[0.2em]">
-          <span>Document Index ({documents.length} Files)</span>
-          <span>Stored Locally</span>
+        <div className={`mb-8 p-6 border rounded-[1.5rem] flex items-center gap-4 animate-pulse ${provider === 'gemini' ? 'bg-blue-950/20 border-blue-500/20 text-blue-300' : 'bg-orange-950/20 border-orange-500/20 text-orange-300'}`}>
+          <div className={`w-6 h-6 border-3 rounded-full animate-spin ${provider === 'gemini' ? 'border-blue-500' : 'border-orange-500'} border-t-transparent`}></div>
+          <span className="text-[11px] font-black tracking-widest uppercase">{progress}</span>
         </div>
       )}
 
@@ -188,20 +185,19 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
             </div>
             <p className="text-xl font-black text-zinc-400 tracking-tight">Memory is Empty</p>
             <p className="text-sm mt-3 text-zinc-600 px-10 text-center font-medium max-w-sm leading-relaxed">
-              Upload PDF, DocX, or Markdown files. PI will vectorize them instantly to provide tailored answers based on your private data.
+              Upload documents. PI will use {provider.toUpperCase()} to index them for context-aware chat.
             </p>
           </div>
         ) : (
           documents.map(doc => (
             <div key={doc.id} className="bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-7 hover:bg-zinc-900/80 hover:border-zinc-700 transition-all group relative overflow-hidden">
               <div className="flex items-start justify-between mb-8">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg ${
-                  doc.type === 'pdf' ? 'bg-red-500/10 text-red-500' : 
-                  doc.type === 'docx' ? 'bg-blue-500/10 text-blue-500' : 'bg-zinc-800/50 text-zinc-400'
-                }`}>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg ${doc.type === 'pdf' ? 'bg-red-500/10 text-red-500' :
+                    doc.type === 'docx' ? 'bg-blue-500/10 text-blue-500' : 'bg-zinc-800/50 text-zinc-400'
+                  }`}>
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 </div>
-                <button 
+                <button
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
@@ -214,7 +210,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 </button>
               </div>
-              
+
               <div className="space-y-2">
                 <h3 className="font-black text-zinc-100 truncate text-lg" title={doc.title}>{doc.title}</h3>
                 <p className="text-xs text-zinc-500 line-clamp-2 font-medium leading-relaxed mb-6">
@@ -227,7 +223,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
                   <span className="text-[8px] px-2 py-0.5 rounded-lg bg-zinc-950 text-zinc-400 font-black tracking-widest uppercase border border-zinc-800">{doc.type}</span>
                 </div>
                 <span className="text-[10px] text-zinc-600 font-black uppercase tracking-tight">
-                  {new Date(doc.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {new Date(doc.createdAt).toLocaleDateString()}
                 </span>
               </div>
             </div>
