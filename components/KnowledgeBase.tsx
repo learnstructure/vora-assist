@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Document, DocumentChunk, AIProvider } from '../types';
 import { storageService } from '../services/storageService';
 import { geminiService } from '../services/geminiService';
-import { groqService } from '../services/groqService';
 import * as pdfjs from 'pdfjs-dist';
 import mammoth from 'mammoth';
 
@@ -73,17 +72,15 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
           createdAt: Date.now(),
         };
 
-        setProgress(`Vectorizing ${file.name} via ${provider.toUpperCase()}...`);
+        // CONSISTENTLY use Gemini for embeddings (Brain indexing)
+        setProgress(`Vectorizing ${file.name} via Gemini...`);
         const textChunks = chunkText(text);
         const chunkObjects: DocumentChunk[] = [];
 
         for (let i = 0; i < textChunks.length; i++) {
           setProgress(`Indexing ${file.name} (Part ${i + 1}/${textChunks.length})...`);
 
-          // Use the active provider for embeddings
-          const embedding = provider === 'groq'
-            ? await groqService.getEmbedding(textChunks[i])
-            : await geminiService.getEmbedding(textChunks[i]);
+          const embedding = await geminiService.getEmbedding(textChunks[i]);
 
           chunkObjects.push({
             id: `${docId}-chunk-${i}`,
@@ -99,7 +96,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
         setChunks(prev => [...prev, ...chunkObjects]);
       } catch (err: any) {
         console.error("Error processing file:", err);
-        alert(`Failed to process ${file.name}: ${err.message}`);
+        alert(`Failed to process ${file.name}: ${err.message}. Ensure your Gemini API_KEY is set correctly.`);
       }
     }
 
@@ -144,7 +141,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
         <div>
           <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tighter mb-2 uppercase">Memory Bank</h1>
-          <p className="text-zinc-500 text-sm font-medium">Manage your local intelligence context using {provider.toUpperCase()}.</p>
+          <p className="text-zinc-500 text-sm font-medium">Indexing powered by Gemini • Chatting via {provider.toUpperCase()}.</p>
         </div>
 
         <div className="flex gap-3 w-full sm:w-auto">
@@ -156,7 +153,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
               Wipe Bank
             </button>
           )}
-          <label className={`flex-1 sm:flex-none text-center cursor-pointer ${provider === 'gemini' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-orange-600 hover:bg-orange-500'} text-white px-8 py-3 rounded-2xl text-[11px] font-black tracking-widest uppercase transition-all shadow-xl active:scale-95 ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
+          <label className={`flex-1 sm:flex-none text-center cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-2xl text-[11px] font-black tracking-widest uppercase transition-all shadow-xl active:scale-95 ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
             {isProcessing ? 'Indexing...' : 'Upload Data'}
             <input
               type="file"
@@ -171,8 +168,8 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
       </div>
 
       {isProcessing && (
-        <div className={`mb-8 p-6 border rounded-[1.5rem] flex items-center gap-4 animate-pulse ${provider === 'gemini' ? 'bg-blue-950/20 border-blue-500/20 text-blue-300' : 'bg-orange-950/20 border-orange-500/20 text-orange-300'}`}>
-          <div className={`w-6 h-6 border-3 rounded-full animate-spin ${provider === 'gemini' ? 'border-blue-500' : 'border-orange-500'} border-t-transparent`}></div>
+        <div className="mb-8 p-6 border rounded-[1.5rem] flex items-center gap-4 animate-pulse bg-blue-950/20 border-blue-500/20 text-blue-300">
+          <div className="w-6 h-6 border-3 rounded-full animate-spin border-blue-500 border-t-transparent"></div>
           <span className="text-[11px] font-black tracking-widest uppercase">{progress}</span>
         </div>
       )}
@@ -185,7 +182,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
             </div>
             <p className="text-xl font-black text-zinc-400 tracking-tight">Memory is Empty</p>
             <p className="text-sm mt-3 text-zinc-600 px-10 text-center font-medium max-w-sm leading-relaxed">
-              Upload documents. PI will use {provider.toUpperCase()} to index them for context-aware chat.
+              Upload documents. PI uses Gemini to index them for cross-model context-aware chat.
             </p>
           </div>
         ) : (

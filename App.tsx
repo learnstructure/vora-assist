@@ -51,8 +51,9 @@ const App: React.FC = () => {
     setIsSidebarOpen(false);
   };
 
-  const isProviderOffline = () => {
-    if (provider === 'gemini') return !process.env.API_KEY;
+  const isGeminiMissing = () => !process.env.API_KEY;
+  const isChatProviderMissing = () => {
+    if (provider === 'gemini') return isGeminiMissing();
     if (provider === 'groq') return !process.env.GROQ_API_KEY;
     return false;
   };
@@ -126,14 +127,20 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {isProviderOffline() && (
-        <div className="fixed bottom-4 right-4 z-[60]">
+      <div className="fixed bottom-4 right-4 z-[60] flex flex-col items-end gap-2">
+        {isGeminiMissing() && (
+          <div className="bg-blue-950/80 border border-blue-500/30 backdrop-blur-xl px-4 py-2 rounded-xl text-[10px] text-blue-200 flex items-center gap-2 shadow-2xl">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+            GEMINI REQ FOR MEMORY
+          </div>
+        )}
+        {isChatProviderMissing() && (
           <div className="bg-red-950/80 border border-red-500/30 backdrop-blur-xl px-4 py-2 rounded-xl text-[10px] text-red-200 flex items-center gap-2 shadow-2xl">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
-            {provider.toUpperCase()} OFFLINE (API KEY REQ)
+            {provider.toUpperCase()} CHAT OFFLINE
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

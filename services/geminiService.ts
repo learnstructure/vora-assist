@@ -1,29 +1,52 @@
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { UserProfile, Document, Message, DocumentChunk } from '../types';
+import { UserProfile, Message, DocumentChunk } from '../types';
 
-const CHAT_MODEL = 'gemini-3-pro-preview';
+const CHAT_MODEL = 'gemini-3-flash-preview';
 const EMBEDDING_MODEL = 'text-embedding-004';
 
 export const geminiService = {
-  getEmbedding: async (text: string): Promise<number[]> => {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) throw new Error("Gemini API Key is missing. Please set API_KEY or GEMINI_API_KEY in your .env.local file.");
+  getEmbedding: async (text: string, isQuery: boolean = false): Promise<number[]> => {
+    // ALWAYS use process.env.API_KEY directly when initializing the client
+    if (!process.env.API_KEY) throw new Error("Gemini API Key is missing. Gemini is required for document indexing (Memory Bank).");
 
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.embedContent({
-      model: EMBEDDING_MODEL,
-      contents: [{ parts: [{ text }] }],
-    });
-    return (response as any).embeddings[0].values;
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    /**
+     * Use ai.models.embedContent to generate vector embeddings.
+     */
+    try {
+      // Fix: 'content' changed to 'contents' (plural) and wrapped in an array as expected by the SDK version's EmbedContentParameters
+      const response = await ai.models.embedContent({
+        model: EMBEDDING_MODEL,
+        contents: [{ parts: [{ text }] }],
+        taskType: isQuery ? 'RETRIEVAL_QUERY' : 'RETRIEVAL_DOCUMENT',
+      });
+
+      // Fix: 'embedding' changed to 'embeddings' (plural array) as expected by the SDK version's EmbedContentResponse
+      if (!response.embeddings || response.embeddings.length === 0 || !response.embeddings[0].values) {
+        throw new Error("No embeddings returned from Gemini.");
+      }
+
+      // Fix: Access the first element of 'embeddings' array
+      return response.embeddings[0].values;
+    } catch (error: any) {
+      console.error("Gemini Embedding Error:", error);
+      throw new Error(error.message || "Failed to generate embedding");
+    }
   },
 
   cosineSimilarity: (vecA: number[], vecB: number[]): number => {
     let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
     for (let i = 0; i < vecA.length; i++) {
       dotProduct += vecA[i] * vecB[i];
+      normA += vecA[i] * vecA[i];
+      normB += vecB[i] * vecB[i];
     }
-    return dotProduct;
+    if (normA === 0 || normB === 0) return 0;
+    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   },
 
   askPI: async (
@@ -32,10 +55,10 @@ export const geminiService = {
     profile: UserProfile,
     relevantChunks: DocumentChunk[]
   ): Promise<{ text: string; sources: string[] }> => {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) throw new Error("Gemini API Key is missing.");
+    // ALWAYS use process.env.API_KEY directly when initializing the client
+    if (!process.env.API_KEY) throw new Error("Gemini API Key is missing.");
 
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const systemInstruction = `
       You are VORA Assist, an Intelligent Partner designed for high-performance research and context-aware assistance.
@@ -80,6 +103,7 @@ export const geminiService = {
         }
       });
 
+      // Directly access .text property as it is a getter, not a method
       const text = response.text || "I'm sorry, I couldn't generate a response.";
       const sources = Array.from(new Set(relevantChunks.map(c => c.docTitle)));
 

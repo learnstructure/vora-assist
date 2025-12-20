@@ -39,14 +39,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (cachedChunks.length === 0) return [];
 
     try {
-      const queryEmbedding = provider === 'groq'
-        ? await groqService.getEmbedding(query)
-        : await geminiService.getEmbedding(query);
+      // ALWAYS use Gemini for retrieval because documents are indexed with Gemini embeddings
+      // Pass 'true' to indicate this is a search query for optimized embedding
+      const queryEmbedding = await geminiService.getEmbedding(query, true);
 
       const scoredChunks = cachedChunks.map(chunk => {
-        const similarity = provider === 'groq'
-          ? groqService.cosineSimilarity(queryEmbedding, chunk.embedding)
-          : geminiService.cosineSimilarity(queryEmbedding, chunk.embedding);
+        const similarity = geminiService.cosineSimilarity(queryEmbedding, chunk.embedding);
 
         return {
           chunk,
@@ -55,12 +53,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       });
 
       return scoredChunks
-        .filter(item => item.score > 0.4)
+        .filter(item => item.score > 0.45) // Slightly higher threshold for quality
         .sort((a, b) => b.score - a.score)
         .slice(0, 5)
         .map(item => item.chunk);
     } catch (e) {
-      console.warn("Retrieval skipped due to missing provider keys or errors:", e);
+      console.warn("Retrieval skipped: Gemini API key might be missing for embeddings.", e);
       return [];
     }
   };
@@ -113,7 +111,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        content: `I encountered an error: ${err.message || "Unknown error"}. Please check your API configuration in .env.local.`,
+        content: `Error: ${err.message || "Unknown error"}. Note: Gemini API key is required for Memory retrieval, even if using Groq for chat.`,
         timestamp: Date.now(),
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -201,10 +199,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <div className="flex justify-start">
             <div className="flex items-center gap-3 bg-zinc-900/40 border border-zinc-800/50 px-5 py-2.5 rounded-2xl text-[9px] text-zinc-500 font-black tracking-widest uppercase">
               <div className="flex gap-1">
-                <span className="w-1 h-1 bg-orange-500 rounded-full animate-ping"></span>
-                <span className="w-1 h-1 bg-orange-500 rounded-full animate-ping delay-75"></span>
+                <span className="w-1 h-1 bg-blue-500 rounded-full animate-ping"></span>
+                <span className="w-1 h-1 bg-blue-500 rounded-full animate-ping delay-75"></span>
               </div>
-              Memory Lookup Active
+              Searching Memory (Gemini Embeddings)
             </div>
           </div>
         )}
