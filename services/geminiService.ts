@@ -24,7 +24,12 @@ export const geminiService = {
         throw new Error("No embedding returned from Gemini.");
       }
 
-      return response.embeddings[0].values;
+      const values = response.embeddings[0].values;
+      if (!values) {
+        throw new Error("Embedding response contained no vector values.");
+      }
+
+      return values;
     } catch (error: any) {
       console.error("Gemini Embedding Error:", error);
       throw new Error(error.message || "Failed to generate embedding");
