@@ -5,7 +5,8 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   // This loads .env, .env.local, .env.development, etc.
-  const env = loadEnv(mode, process.cwd(), '');
+  // Fix: Property 'cwd' does not exist on type 'Process' by casting to any to satisfy the compiler in Node contexts
+  const env = loadEnv(mode, (process as any).cwd(), '');
 
   return {
     plugins: [react()],

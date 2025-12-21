@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Message, UserProfile, Document, DocumentChunk, AIProvider } from '../types';
 import { geminiService } from '../services/geminiService';
 import { groqService } from '../services/groqService';
+import { marked } from 'marked';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -51,14 +52,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         return { chunk, score: similarity };
       });
 
-      // Tuned threshold: 0.35 provides better "fuzzy" matching for local memory
       return scoredChunks
         .filter(item => item.score > 0.35)
         .sort((a, b) => b.score - a.score)
         .slice(0, 6)
         .map(item => item.chunk);
     } catch (e) {
-      console.warn("Memory retrieval paused (Gemini Key Required for Search)", e);
+      console.warn("Memory retrieval paused", e);
       return [];
     }
   };
@@ -122,6 +122,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
 
+  const renderMarkdown = (content: string) => {
+    try {
+      return { __html: marked.parse(content) };
+    } catch (e) {
+      return { __html: content };
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-zinc-950 relative overflow-hidden antialiased">
       <div className="h-14 lg:h-16 border-b border-zinc-900 flex items-center px-4 lg:px-8 bg-zinc-950/80 backdrop-blur-xl z-20 sticky top-0">
@@ -168,14 +176,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         {safeMessages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[95%] sm:max-w-[85%] lg:max-w-[80%] ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-              <div className={`inline-block px-8 py-5 rounded-[2rem] text-[15px] lg:text-[16px] leading-7 transition-all shadow-sm ${msg.role === 'user'
-                  ? 'bg-zinc-100 text-zinc-900 font-semibold rounded-tr-none'
+            <div className={`max-w-[95%] sm:max-w-[85%] lg:max-w-[85%] ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+              <div className={`inline-block px-8 py-5 rounded-[2rem] text-[15px] lg:text-[16px] leading-relaxed transition-all shadow-sm ${msg.role === 'user'
+                  ? 'bg-zinc-100 text-zinc-900 font-semibold rounded-tr-none text-left'
                   : 'bg-zinc-900/50 backdrop-blur-md text-zinc-400 border border-zinc-800/80 rounded-tl-none font-medium'
                 }`}>
-                {(msg.content || '').split('\n').map((line, i) => (
-                  <div key={i} className={line ? 'mb-4 last:mb-0' : 'h-4'}>{line}</div>
-                ))}
+                {msg.role === 'user' ? (
+                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                ) : (
+                  <div
+                    className="markdown-content"
+                    dangerouslySetInnerHTML={renderMarkdown(msg.content)}
+                  />
+                )}
               </div>
 
               {msg.sources && msg.sources.length > 0 && (
