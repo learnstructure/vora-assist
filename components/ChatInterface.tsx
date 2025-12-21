@@ -20,8 +20,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   messages = [],
   setMessages,
   profile,
-  documents,
-  cachedChunks,
+  documents = [],
+  cachedChunks = [],
   provider,
   toggleSidebar,
   currentChatId,
@@ -51,13 +51,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         return { chunk, score: similarity };
       });
 
+      // Tuned threshold: 0.35 provides better "fuzzy" matching for local memory
       return scoredChunks
-        .filter(item => item.score > 0.4)
+        .filter(item => item.score > 0.35)
         .sort((a, b) => b.score - a.score)
-        .slice(0, 5)
+        .slice(0, 6)
         .map(item => item.chunk);
     } catch (e) {
-      console.warn("Retrieval skipped", e);
+      console.warn("Memory retrieval paused (Gemini Key Required for Search)", e);
       return [];
     }
   };
@@ -85,15 +86,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     try {
       const relevantChunks = await performSemanticRetrieval(currentInput);
+      const allDocTitles = documents.map(d => d.title);
       setRetrieving(false);
 
       let response;
       const activeHistory = !currentChatId ? [] : safeMessages;
 
       if (provider === 'groq') {
-        response = await groqService.askGroq(currentInput, activeHistory, profile, relevantChunks);
+        response = await groqService.askGroq(currentInput, activeHistory, profile, relevantChunks, allDocTitles);
       } else {
-        response = await geminiService.askVora(currentInput, activeHistory, profile, relevantChunks);
+        response = await geminiService.askVora(currentInput, activeHistory, profile, relevantChunks, allDocTitles);
       }
 
       const aiMessage: Message = {
@@ -110,7 +112,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        content: `Error: ${err.message || "Unknown error"}.`,
+        content: `Intelligence sync failed: ${err.message || "Unknown error"}.`,
         timestamp: Date.now(),
       };
       setMessages(prev => [...(Array.isArray(prev) ? prev : []), errorMessage]);
@@ -197,7 +199,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <span className="w-1 h-1 bg-blue-500 rounded-full animate-ping"></span>
                 <span className="w-1 h-1 bg-blue-500 rounded-full animate-ping delay-75"></span>
               </div>
-              Searching Memory (Gemini)
+              Syncing Memory (Vector)
             </div>
           </div>
         )}

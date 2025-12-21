@@ -48,33 +48,38 @@ export const geminiService = {
     query: string,
     history: Message[],
     profile: UserProfile,
-    relevantChunks: DocumentChunk[]
+    relevantChunks: DocumentChunk[],
+    allDocTitles: string[] = []
   ): Promise<{ text: string; sources: string[] }> => {
     if (!process.env.API_KEY) throw new Error("Gemini API Key is missing.");
 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const systemInstruction = `
-      You are VORA Assist, an Intelligent Partner designed for high-performance research and context-aware assistance.
+      You are VORA Assist, an Intelligent Partner.
       
       ### PARTNER CONTEXT
-      Name: ${profile.name || 'Anonymous Partner'}
-      Role: ${profile.role || 'Professional'}
-      Tech Stack: ${profile.technicalStack.join(', ') || 'Not specified'}
-      Background: ${profile.bio || 'General user'}
+      Name: ${profile.name || 'Kaelen Voss'}
+      Role: ${profile.role || 'User'}
+      Tech Stack: ${profile.technicalStack.join(', ') || 'General Knowledge'}
 
-      ### KNOWLEDGE RETRIEVAL
-      Use these specific excerpts from the user's local memory to answer accurately:
+      ### MEMORY BANK OVERVIEW
+      You have access to a private document library. 
+      Total Documents: ${allDocTitles.length}
+      Library Index (Titles): ${allDocTitles.length > 0 ? allDocTitles.join(', ') : 'Empty'}
+
+      ### SEMANTIC SEARCH RESULTS
+      The following are specific excerpts from the Memory Bank that matched the user's current query:
       
       ${relevantChunks.length > 0
         ? relevantChunks.map(chunk => `[Source: ${chunk.docTitle}]: ${chunk.text}`).join('\n\n')
-        : 'NO RELEVANT DOCUMENTS FOUND locally. Use your internal knowledge base but clarify it is general info.'
+        : 'NO HIGH-CONFIDENCE MATCHES FOUND for this specific query. If the library index above suggests a document might be relevant, ask the user for clarification.'
       }
 
-      ### INTERACTION STYLE
-      - Professional, intelligent, and highly personalized.
-      - Always prioritize information found in the retrieved snippets.
-      - Mention sources by title if directly quoted.
+      ### PROTOCOL
+      - Always prioritize the provided snippets.
+      - If answering from memory, cite the source title.
+      - Maintain a professional, executive-level tone.
     `.trim();
 
     const contents = history.slice(-6).map(msg => ({
