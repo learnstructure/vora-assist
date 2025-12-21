@@ -1,12 +1,14 @@
 
 import React from 'react';
-import { AIProvider, ChatSession } from '../types';
+import { AIProvider, ChatSession, GroqModel } from '../types';
 
 interface SidebarProps {
   activeTab: 'chat' | 'knowledge' | 'profile';
   setActiveTab: (tab: 'chat' | 'knowledge' | 'profile') => void;
   provider: AIProvider;
   setProvider: (p: AIProvider) => void;
+  groqModel: GroqModel;
+  setGroqModel: (m: GroqModel) => void;
   onClose?: () => void;
   sessions: ChatSession[];
   currentChatId: string | null;
@@ -20,6 +22,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   setActiveTab,
   provider,
   setProvider,
+  groqModel,
+  setGroqModel,
   onClose,
   sessions = [],
   currentChatId,
@@ -87,10 +91,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {activeTab === 'chat' && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {/* Fix: use onNewChat prop instead of undefined handleNewChat */}
             <button
               onClick={onNewChat}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white transition-all text-[11px] font-black uppercase tracking-widest mb-6 flex-shrink-0"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white transition-all text-[11px] font-black uppercase tracking-widest mb-6 flex-shrink-0 shadow-lg shadow-blue-600/10"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
               New Chat
@@ -135,19 +138,41 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="mt-auto space-y-4 pt-6 flex-shrink-0">
           <label className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.25em] px-4">Brain Config</label>
-          <div className="bg-zinc-950 p-1.5 rounded-2xl border border-zinc-800 flex gap-1.5">
-            <button
-              onClick={() => setProvider('gemini')}
-              className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${provider === 'gemini' ? 'bg-zinc-800 text-blue-400 shadow-inner' : 'text-zinc-600 hover:text-zinc-500'}`}
-            >
-              Gemini
-            </button>
-            <button
-              onClick={() => setProvider('groq')}
-              className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${provider === 'groq' ? 'bg-zinc-800 text-orange-400 shadow-inner' : 'text-zinc-600 hover:text-zinc-500'}`}
-            >
-              Groq
-            </button>
+          <div className="bg-zinc-950 p-1.5 rounded-2xl border border-zinc-800 flex flex-col gap-1.5">
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => setProvider('gemini')}
+                className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${provider === 'gemini' ? 'bg-zinc-800 text-blue-400 shadow-inner' : 'text-zinc-600 hover:text-zinc-500'}`}
+              >
+                Gemini
+              </button>
+              <button
+                onClick={() => setProvider('groq')}
+                className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${provider === 'groq' ? 'bg-zinc-800 text-orange-400 shadow-inner' : 'text-zinc-600 hover:text-zinc-500'}`}
+              >
+                Groq
+              </button>
+            </div>
+
+            {provider === 'groq' && (
+              <div className="flex flex-col gap-1 px-1 pb-1 animate-fade-in">
+                <div className="h-px bg-zinc-800 my-1 mx-2" />
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setGroqModel('llama-3.3-70b-versatile')}
+                    className={`flex-1 py-1.5 rounded-lg text-[8px] font-black transition-all uppercase tracking-widest ${groqModel === 'llama-3.3-70b-versatile' ? 'text-zinc-100 bg-zinc-800 ring-1 ring-zinc-700' : 'text-zinc-600'}`}
+                  >
+                    Llama 3.3
+                  </button>
+                  <button
+                    onClick={() => setGroqModel('openai/gpt-oss-120b')}
+                    className={`flex-1 py-1.5 rounded-lg text-[8px] font-black transition-all uppercase tracking-widest ${groqModel === 'openai/gpt-oss-120b' ? 'text-purple-400 bg-zinc-800 ring-1 ring-purple-500/20 shadow-[0_0_10px_rgba(168,85,247,0.1)]' : 'text-zinc-600'}`}
+                  >
+                    Expert 120B
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

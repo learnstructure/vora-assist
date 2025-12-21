@@ -13,7 +13,7 @@ export interface Document {
   id: string;
   title: string;
   content: string;
-  type: 'text' | 'markdown' | 'code' | 'pdf' | 'docx';
+  type: 'text' | 'markdown' | 'code' | 'pdf' | 'docx' | 'html';
   category: string;
   tags: string[];
   createdAt: number;
@@ -43,6 +43,7 @@ export interface ChatSession {
 }
 
 export type AIProvider = 'gemini' | 'groq';
+export type GroqModel = 'llama-3.3-70b-versatile' | 'openai/gpt-oss-120b';
 
 export interface AppState {
   profile: UserProfile;
@@ -50,6 +51,7 @@ export interface AppState {
   messages: Message[];
   isSearching: boolean;
   provider: AIProvider;
+  groqModel: GroqModel;
   sessions: ChatSession[];
   currentChatId: string | null;
 }

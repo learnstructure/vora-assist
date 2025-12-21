@@ -1,7 +1,6 @@
 
-import { UserProfile, Message, DocumentChunk } from '../types';
+import { UserProfile, Message, DocumentChunk, GroqModel } from '../types';
 
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
 export const groqService = {
@@ -10,7 +9,8 @@ export const groqService = {
     history: Message[],
     profile: UserProfile,
     relevantChunks: DocumentChunk[],
-    allDocTitles: string[] = []
+    allDocTitles: string[] = [],
+    model: GroqModel = 'llama-3.3-70b-versatile'
   ): Promise<{ text: string; sources: string[] }> => {
     const apiKey = process.env.GROQ_API_KEY;
 
@@ -19,12 +19,12 @@ export const groqService = {
     }
 
     const systemInstruction = `
-      You are VORA Assist, an Intelligent Partner running on the Groq LPU engine.
+      You are VORA Assist, an Intelligent Partner running on the Groq LPU engine using the ${model} model.
       
       ### PARTNER CONTEXT
       Name: ${profile.name || 'Kaelen Voss'}
       Role: ${profile.role || 'User'}
-      Tech Stack: ${profile.technicalStack.join(', ')}
+      Tech Stack: ${profile.technicalStack.join(', ') || 'General Knowledge'}
 
       ### MEMORY BANK (PRIVATE LIBRARY)
       You are connected to a local document store.
@@ -34,13 +34,14 @@ export const groqService = {
       The following excerpts were retrieved from local memory for this query:
       ${relevantChunks.length > 0
         ? relevantChunks.map(c => `[Source: ${c.docTitle}]: ${c.text}`).join('\n\n')
-        : 'No specific document chunks matched this semantic search. Refer to the Library Index if you need to suggest a document to the user.'
+        : 'No specific document chunks matched this semantic search.'
       }
 
       ### PROTOCOL
       - Be precise and deeply helpful.
       - If snippets are provided, they are your primary source of truth.
       - Cite source titles clearly.
+      - Maintain your partner persona at all times.
     `;
 
     const messages = [
@@ -60,10 +61,10 @@ export const groqService = {
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: GROQ_MODEL,
+          model: model,
           messages,
           stream: false,
-          temperature: 0.6,
+          temperature: model === 'openai/gpt-oss-120b' ? 0.4 : 0.6,
           max_tokens: 4096
         })
       });

@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Message, UserProfile, Document, DocumentChunk, AIProvider } from '../types';
+import { Message, UserProfile, Document, DocumentChunk, AIProvider, GroqModel } from '../types';
 import { geminiService } from '../services/geminiService';
 import { groqService } from '../services/groqService';
 import { marked } from 'marked';
@@ -12,6 +12,7 @@ interface ChatInterfaceProps {
   documents: Document[];
   cachedChunks: DocumentChunk[];
   provider: AIProvider;
+  groqModel: GroqModel;
   toggleSidebar?: () => void;
   currentChatId: string | null;
   onFirstMessage: (m: Message) => void;
@@ -24,6 +25,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   documents = [],
   cachedChunks = [],
   provider,
+  groqModel,
   toggleSidebar,
   currentChatId,
   onFirstMessage
@@ -93,7 +95,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const activeHistory = !currentChatId ? [] : safeMessages;
 
       if (provider === 'groq') {
-        response = await groqService.askGroq(currentInput, activeHistory, profile, relevantChunks, allDocTitles);
+        response = await groqService.askGroq(currentInput, activeHistory, profile, relevantChunks, allDocTitles, groqModel);
       } else {
         response = await geminiService.askVora(currentInput, activeHistory, profile, relevantChunks, allDocTitles);
       }
@@ -148,9 +150,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2 lg:gap-4">
-          <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-xl border ${provider === 'gemini' ? 'text-blue-400 border-blue-500/20 bg-blue-500/5' : 'text-orange-400 border-orange-500/20 bg-orange-500/5'
+          <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-xl border flex items-center gap-2 ${provider === 'gemini' ? 'text-blue-400 border-blue-500/20 bg-blue-500/5' : 'text-orange-400 border-orange-500/20 bg-orange-500/5'
             }`}>
-            {provider === 'gemini' ? 'Gemini 3 Flash' : 'Groq LPU'}
+            {provider === 'gemini' ? 'Gemini 3 Flash' : (
+              <>
+                <span className={`w-1 h-1 rounded-full animate-pulse ${groqModel === 'openai/gpt-oss-120b' ? 'bg-purple-500' : 'bg-orange-500'}`}></span>
+                {groqModel === 'openai/gpt-oss-120b' ? 'Groq Expert 120B' : 'Groq Llama 3.3'}
+              </>
+            )}
           </span>
         </div>
       </div>
@@ -195,7 +202,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <div className="mt-5 flex flex-wrap gap-2 justify-start px-2">
                   <span className="text-[9px] text-zinc-600 font-black uppercase tracking-widest self-center mr-1">Context:</span>
                   {msg.sources.map((s, idx) => (
-                    <span key={idx} className="px-3 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-[9px] text-zinc-500 font-bold uppercase tracking-tight hover:text-blue-400 transition-colors">
+                    <span key={idx} className="px-3 py-1 rounded-xl bg-zinc-950 border border-zinc-800 text-[9px] text-zinc-500 font-bold uppercase tracking-tight hover:text-blue-400 transition-colors">
                       {s}
                     </span>
                   ))}

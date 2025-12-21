@@ -4,7 +4,7 @@ import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import KnowledgeBase from './components/KnowledgeBase';
 import ProfileEditor from './components/ProfileEditor';
-import { UserProfile, Document, Message, DocumentChunk, AIProvider, ChatSession } from './types';
+import { UserProfile, Document, Message, DocumentChunk, AIProvider, ChatSession, GroqModel } from './types';
 import { storageService } from './services/storageService';
 
 const App: React.FC = () => {
@@ -13,12 +13,16 @@ const App: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [chunks, setChunks] = useState<DocumentChunk[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentChatId, setCurrentChatId] = useState<string | null>(localStorage.getItem('pi_active_chat'));
+  const [currentChatId, setCurrentChatId] = useState<string | null>(localStorage.getItem('vora_active_chat'));
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [provider, setProvider] = useState<AIProvider>(
-    (localStorage.getItem('pi_provider') as AIProvider) || 'groq'
+    (localStorage.getItem('vora_provider') as AIProvider) || 'groq'
+  );
+
+  const [groqModel, setGroqModel] = useState<GroqModel>(
+    (localStorage.getItem('vora_groq_model') as GroqModel) || 'llama-3.3-70b-versatile'
   );
 
   // Initial load with defensive checks
@@ -47,12 +51,11 @@ const App: React.FC = () => {
             console.warn("Session invalid or missing, resetting active chat");
             setCurrentChatId(null);
             setMessages([]);
-            localStorage.removeItem('pi_active_chat');
+            localStorage.removeItem('vora_active_chat');
           }
         }
       } catch (error) {
         console.error("Critical error loading local data:", error);
-        // Fallback to empty state instead of crashing
         setSessions([]);
         setMessages([]);
       }
@@ -83,14 +86,18 @@ const App: React.FC = () => {
   }, [messages, currentChatId]);
 
   useEffect(() => {
-    localStorage.setItem('pi_provider', provider);
+    localStorage.setItem('vora_provider', provider);
   }, [provider]);
 
   useEffect(() => {
+    localStorage.setItem('vora_groq_model', groqModel);
+  }, [groqModel]);
+
+  useEffect(() => {
     if (currentChatId) {
-      localStorage.setItem('pi_active_chat', currentChatId);
+      localStorage.setItem('vora_active_chat', currentChatId);
     } else {
-      localStorage.removeItem('pi_active_chat');
+      localStorage.removeItem('vora_active_chat');
     }
   }, [currentChatId]);
 
@@ -169,6 +176,8 @@ const App: React.FC = () => {
           setActiveTab={setActiveTab}
           provider={provider}
           setProvider={setProvider}
+          groqModel={groqModel}
+          setGroqModel={setGroqModel}
           onClose={() => setIsSidebarOpen(false)}
           sessions={sessions}
           currentChatId={currentChatId}
@@ -187,6 +196,7 @@ const App: React.FC = () => {
             documents={documents}
             cachedChunks={chunks}
             provider={provider}
+            groqModel={groqModel}
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             currentChatId={currentChatId}
             onFirstMessage={handleFirstMessageSent}
