@@ -32,7 +32,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [retrieving, setRetrieving] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Safely ensure messages is always an array
   const safeMessages = Array.isArray(messages) ? messages : [];
 
   useEffect(() => {
@@ -78,7 +77,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setIsLoading(true);
     setRetrieving(true);
 
-    // If this is the start of a new chat, initialize the session
     if (!currentChatId) {
       onFirstMessage(userMessage);
     } else {
@@ -90,13 +88,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setRetrieving(false);
 
       let response;
-      // Use latest messages including the one we just added
       const activeHistory = !currentChatId ? [] : safeMessages;
 
       if (provider === 'groq') {
         response = await groqService.askGroq(currentInput, activeHistory, profile, relevantChunks);
       } else {
-        response = await geminiService.askPI(currentInput, activeHistory, profile, relevantChunks);
+        response = await geminiService.askVora(currentInput, activeHistory, profile, relevantChunks);
       }
 
       const aiMessage: Message = {
@@ -124,7 +121,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 relative overflow-hidden">
+    <div className="flex flex-col h-full bg-zinc-950 relative overflow-hidden antialiased">
       <div className="h-14 lg:h-16 border-b border-zinc-900 flex items-center px-4 lg:px-8 bg-zinc-950/80 backdrop-blur-xl z-20 sticky top-0">
         <div className="flex items-center gap-3">
           {toggleSidebar && (
@@ -148,7 +145,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 lg:px-20 lg:py-12 space-y-10 pb-32 scroll-smooth">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 lg:px-24 lg:py-16 space-y-12 pb-32 scroll-smooth">
         {safeMessages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto space-y-8 animate-fade-in">
             <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center shadow-2xl transition-all duration-700 transform hover:rotate-6 ${provider === 'gemini' ? 'bg-blue-600 shadow-blue-500/20' : 'bg-orange-600 shadow-orange-500/20'
@@ -157,8 +154,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </div>
             <div className="space-y-4">
               <h3 className="text-2xl font-black text-white tracking-tighter">Your Intelligent Assistant</h3>
-              <p className="text-zinc-500 text-xs font-medium leading-relaxed">
-                Send a message to start a new session. I'll search your {documents.length} local documents to provide context-aware answers.
+              <p className="text-zinc-500 text-[13px] font-medium leading-relaxed px-4">
+                {documents.length > 0
+                  ? `I'm ready to search your ${documents.length} documents to provide high-precision, context-aware intelligence.`
+                  : "Initialize my memory by uploading documents to the Memory Bank, or start a general conversation to begin our partnership."
+                }
               </p>
             </div>
           </div>
@@ -166,20 +166,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         {safeMessages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[95%] sm:max-w-[85%] lg:max-w-[75%] ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-              <div className={`inline-block px-6 py-4 rounded-[1.8rem] text-sm lg:text-[15px] leading-relaxed transition-all shadow-sm ${msg.role === 'user'
-                  ? 'bg-zinc-100 text-black font-semibold rounded-tr-none'
-                  : 'bg-zinc-900 text-zinc-200 border border-zinc-800 rounded-tl-none'
+            <div className={`max-w-[95%] sm:max-w-[85%] lg:max-w-[80%] ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+              <div className={`inline-block px-8 py-5 rounded-[2rem] text-[15px] lg:text-[16px] leading-7 transition-all shadow-sm ${msg.role === 'user'
+                  ? 'bg-zinc-100 text-zinc-900 font-semibold rounded-tr-none'
+                  : 'bg-zinc-900/50 backdrop-blur-md text-zinc-400 border border-zinc-800/80 rounded-tl-none font-medium'
                 }`}>
                 {(msg.content || '').split('\n').map((line, i) => (
-                  <div key={i} className={line ? 'mb-2 last:mb-0' : 'h-3'}>{line}</div>
+                  <div key={i} className={line ? 'mb-4 last:mb-0' : 'h-4'}>{line}</div>
                 ))}
               </div>
 
               {msg.sources && msg.sources.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2 justify-start">
+                <div className="mt-5 flex flex-wrap gap-2 justify-start px-2">
+                  <span className="text-[9px] text-zinc-600 font-black uppercase tracking-widest self-center mr-1">Context:</span>
                   {msg.sources.map((s, idx) => (
-                    <span key={idx} className="px-3 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-[9px] text-zinc-500 font-black uppercase tracking-widest hover:text-blue-400 transition-colors">
+                    <span key={idx} className="px-3 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-[9px] text-zinc-500 font-bold uppercase tracking-tight hover:text-blue-400 transition-colors">
                       {s}
                     </span>
                   ))}
@@ -203,11 +204,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         {isLoading && !retrieving && (
           <div className="flex justify-start animate-pulse">
-            <div className="bg-zinc-900 border border-zinc-800 px-6 py-4 rounded-2xl rounded-tl-none">
-              <div className="flex gap-2">
-                <div className={`w-2 h-2 rounded-full animate-bounce ${provider === 'gemini' ? 'bg-blue-600' : 'bg-orange-600'}`}></div>
-                <div className={`w-2 h-2 rounded-full animate-bounce [animation-delay:0.2s] ${provider === 'gemini' ? 'bg-blue-600' : 'bg-orange-600'}`}></div>
-                <div className={`w-2 h-2 rounded-full animate-bounce [animation-delay:0.4s] ${provider === 'gemini' ? 'bg-blue-600' : 'bg-orange-600'}`}></div>
+            <div className="bg-zinc-900/50 border border-zinc-800 px-8 py-5 rounded-[2rem] rounded-tl-none">
+              <div className="flex gap-2.5">
+                <div className={`w-2 h-2 rounded-full animate-bounce ${provider === 'gemini' ? 'bg-blue-600/60' : 'bg-orange-600/60'}`}></div>
+                <div className={`w-2 h-2 rounded-full animate-bounce [animation-delay:0.2s] ${provider === 'gemini' ? 'bg-blue-600/60' : 'bg-orange-600/60'}`}></div>
+                <div className={`w-2 h-2 rounded-full animate-bounce [animation-delay:0.4s] ${provider === 'gemini' ? 'bg-blue-600/60' : 'bg-orange-600/60'}`}></div>
               </div>
             </div>
           </div>
@@ -222,7 +223,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder={`Query local memory with ${provider.toUpperCase()}...`}
-            className="w-full bg-zinc-900/60 border border-zinc-800/50 rounded-3xl px-8 py-6 pr-20 text-[15px] text-white focus:outline-none focus:ring-1 focus:ring-zinc-700 transition-all placeholder:text-zinc-600 backdrop-blur-md shadow-2xl"
+            className="w-full bg-zinc-900/60 border border-zinc-800/50 rounded-3xl px-8 py-6 pr-20 text-[15px] text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-700 transition-all placeholder:text-zinc-600 backdrop-blur-md shadow-2xl"
           />
           <button
             onClick={handleSend}

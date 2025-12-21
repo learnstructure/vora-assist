@@ -7,16 +7,11 @@ const EMBEDDING_MODEL = 'text-embedding-004';
 
 export const geminiService = {
   getEmbedding: async (text: string, isQuery: boolean = false): Promise<number[]> => {
-    // ALWAYS use process.env.API_KEY directly when initializing the client
     if (!process.env.API_KEY) throw new Error("Gemini API Key is missing. Gemini is required for document indexing (Memory Bank).");
 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    /**
-     * Use ai.models.embedContent to generate vector embeddings.
-     */
     try {
-      // Fix: In the @google/genai SDK, taskType is placed inside the config object rather than at the top level of EmbedContentParameters.
       const response = await ai.models.embedContent({
         model: EMBEDDING_MODEL,
         contents: [{ parts: [{ text }] }],
@@ -25,12 +20,10 @@ export const geminiService = {
         },
       });
 
-      // The SDK returns an 'embeddings' array when 'contents' is provided as an array.
       if (!response.embeddings || response.embeddings.length === 0) {
         throw new Error("No embedding returned from Gemini.");
       }
 
-      // Retrieve the values from the first item in the embeddings array.
       return response.embeddings[0].values;
     } catch (error: any) {
       console.error("Gemini Embedding Error:", error);
@@ -51,13 +44,12 @@ export const geminiService = {
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   },
 
-  askPI: async (
+  askVora: async (
     query: string,
     history: Message[],
     profile: UserProfile,
     relevantChunks: DocumentChunk[]
   ): Promise<{ text: string; sources: string[] }> => {
-    // ALWAYS use process.env.API_KEY directly when initializing the client
     if (!process.env.API_KEY) throw new Error("Gemini API Key is missing.");
 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -105,7 +97,6 @@ export const geminiService = {
         }
       });
 
-      // Directly access .text property as it is a getter, not a method
       const text = response.text || "I'm sorry, I couldn't generate a response.";
       const sources = Array.from(new Set(relevantChunks.map(c => c.docTitle)));
 

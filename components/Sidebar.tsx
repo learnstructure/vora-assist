@@ -45,7 +45,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
-  // Defensive filtering for safe mapping
   const safeSessions = Array.isArray(sessions) ? sessions.filter(s => s && s.id) : [];
 
   return (
@@ -88,6 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {activeTab === 'chat' && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* Fix: use onNewChat prop instead of undefined handleNewChat */}
             <button
               onClick={onNewChat}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white transition-all text-[11px] font-black uppercase tracking-widest mb-6 flex-shrink-0"

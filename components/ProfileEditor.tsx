@@ -137,7 +137,7 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ profile, setProfile }) =>
                 type="text"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Alex Rivera"
+                placeholder="Kaelen Voss"
                 className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all placeholder:text-zinc-700"
               />
             </div>

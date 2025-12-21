@@ -45,6 +45,10 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.extractRawText({ arrayBuffer });
       return result.value;
+    } else if (file.type === 'text/html' || file.name.endsWith('.html') || file.name.endsWith('.htm')) {
+      const html = await file.text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      return doc.body.innerText || doc.documentElement.innerText || "";
     } else {
       return await file.text();
     }
@@ -62,24 +66,27 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
         const text = await extractText(file);
 
         const docId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+        let docType: any = 'text';
+        if (file.name.endsWith('.pdf')) docType = 'pdf';
+        else if (file.name.endsWith('.docx')) docType = 'docx';
+        else if (file.name.endsWith('.html') || file.name.endsWith('.htm')) docType = 'html';
+
         const newDoc: Document = {
           id: docId,
           title: file.name,
           content: text,
-          type: file.name.endsWith('.pdf') ? 'pdf' : file.name.endsWith('.docx') ? 'docx' : 'text',
+          type: docType,
           category: 'General',
           tags: [],
           createdAt: Date.now(),
         };
 
-        // CONSISTENTLY use Gemini for embeddings (Brain indexing)
         setProgress(`Vectorizing ${file.name} via Gemini...`);
         const textChunks = chunkText(text);
         const chunkObjects: DocumentChunk[] = [];
 
         for (let i = 0; i < textChunks.length; i++) {
           setProgress(`Indexing ${file.name} (Part ${i + 1}/${textChunks.length})...`);
-
           const embedding = await geminiService.getEmbedding(textChunks[i]);
 
           chunkObjects.push({
@@ -117,25 +124,6 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
     }
   };
 
-  const wipeMemory = async () => {
-    if (confirm("Wipe all documents?")) {
-      try {
-        setIsProcessing(true);
-        setProgress('Wiping Memory...');
-        for (const doc of documents) {
-          await storageService.deleteDocument(doc.id);
-        }
-        setDocuments([]);
-        setChunks([]);
-      } catch (err) {
-        console.error("Wipe failed:", err);
-      } finally {
-        setIsProcessing(false);
-        setProgress('');
-      }
-    }
-  };
-
   return (
     <div className="p-5 lg:p-10 h-full overflow-y-auto max-w-7xl mx-auto flex flex-col">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
@@ -145,20 +133,12 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
         </div>
 
         <div className="flex gap-3 w-full sm:w-auto">
-          {documents.length > 0 && (
-            <button
-              onClick={wipeMemory}
-              className="px-6 py-3 rounded-2xl text-[11px] font-black tracking-widest uppercase border border-red-900/50 text-red-500 hover:bg-red-500/5 transition-all"
-            >
-              Wipe Bank
-            </button>
-          )}
           <label className={`flex-1 sm:flex-none text-center cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-2xl text-[11px] font-black tracking-widest uppercase transition-all shadow-xl active:scale-95 ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
             {isProcessing ? 'Indexing...' : 'Upload Data'}
             <input
               type="file"
               className="hidden"
-              accept=".txt,.md,.pdf,.docx"
+              accept=".txt,.md,.pdf,.docx,.html,.htm"
               multiple
               onChange={handleFileUpload}
               disabled={isProcessing}
@@ -190,7 +170,8 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
             <div key={doc.id} className="bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-7 hover:bg-zinc-900/80 hover:border-zinc-700 transition-all group relative overflow-hidden">
               <div className="flex items-start justify-between mb-8">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg ${doc.type === 'pdf' ? 'bg-red-500/10 text-red-500' :
-                    doc.type === 'docx' ? 'bg-blue-500/10 text-blue-500' : 'bg-zinc-800/50 text-zinc-400'
+                    doc.type === 'docx' ? 'bg-blue-500/10 text-blue-500' :
+                      doc.type === 'html' ? 'bg-orange-500/10 text-orange-500' : 'bg-zinc-800/50 text-zinc-400'
                   }`}>
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 </div>

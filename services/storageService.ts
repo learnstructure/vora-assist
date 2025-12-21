@@ -1,19 +1,19 @@
 
 import { UserProfile, Document, Message, DocumentChunk, ChatSession } from '../types';
 
-const DB_NAME = 'PI_Brain';
-const DB_VERSION = 5; // Bumped version for ChatSession support
+const DB_NAME = 'VORA_Brain';
+const DB_VERSION = 5;
 const DOC_STORE = 'documents';
 const CHUNK_STORE = 'chunks';
 const CHAT_STORE = 'chats';
 
 export const storageService = {
   saveProfile: (profile: UserProfile): void => {
-    localStorage.setItem('pi_profile', JSON.stringify(profile));
+    localStorage.setItem('vora_profile', JSON.stringify(profile));
   },
 
   getProfile: (): UserProfile => {
-    const saved = localStorage.getItem('pi_profile');
+    const saved = localStorage.getItem('vora_profile');
     return saved ? JSON.parse(saved) : {
       name: '', role: '', company: '', bio: '',
       technicalStack: [], interests: [], lastUpdated: Date.now()
@@ -28,18 +28,15 @@ export const storageService = {
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
 
-        // Documents Store
         if (!db.objectStoreNames.contains(DOC_STORE)) {
           db.createObjectStore(DOC_STORE, { keyPath: 'id' });
         }
 
-        // Chunks Store
         if (!db.objectStoreNames.contains(CHUNK_STORE)) {
           const chunkStore = db.createObjectStore(CHUNK_STORE, { keyPath: 'id' });
           chunkStore.createIndex('docId', 'docId', { unique: false });
         }
 
-        // Chat Sessions Store
         if (!db.objectStoreNames.contains(CHAT_STORE)) {
           db.createObjectStore(CHAT_STORE, { keyPath: 'id' });
         }
@@ -47,7 +44,6 @@ export const storageService = {
     });
   },
 
-  // Multiple Chat Session Support
   saveChatSession: async (session: ChatSession): Promise<void> => {
     const db = await storageService.initDB();
     return new Promise((resolve, reject) => {
