@@ -16,19 +16,21 @@ export const geminiService = {
      * Use ai.models.embedContent to generate vector embeddings.
      */
     try {
-      // Fix: 'content' changed to 'contents' (plural) and wrapped in an array as expected by the SDK version's EmbedContentParameters
+      // Fix: In the @google/genai SDK, taskType is placed inside the config object rather than at the top level of EmbedContentParameters.
       const response = await ai.models.embedContent({
         model: EMBEDDING_MODEL,
         contents: [{ parts: [{ text }] }],
-        taskType: isQuery ? 'RETRIEVAL_QUERY' : 'RETRIEVAL_DOCUMENT',
+        config: {
+          taskType: isQuery ? 'RETRIEVAL_QUERY' : 'RETRIEVAL_DOCUMENT',
+        },
       });
 
-      // Fix: 'embedding' changed to 'embeddings' (plural array) as expected by the SDK version's EmbedContentResponse
-      if (!response.embeddings || response.embeddings.length === 0 || !response.embeddings[0].values) {
-        throw new Error("No embeddings returned from Gemini.");
+      // The SDK returns an 'embeddings' array when 'contents' is provided as an array.
+      if (!response.embeddings || response.embeddings.length === 0) {
+        throw new Error("No embedding returned from Gemini.");
       }
 
-      // Fix: Access the first element of 'embeddings' array
+      // Retrieve the values from the first item in the embeddings array.
       return response.embeddings[0].values;
     } catch (error: any) {
       console.error("Gemini Embedding Error:", error);

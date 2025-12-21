@@ -3,7 +3,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Message, UserProfile, Document, DocumentChunk, AIProvider } from '../types';
 import { geminiService } from '../services/geminiService';
 import { groqService } from '../services/groqService';
-import { storageService } from '../services/storageService';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -13,60 +12,54 @@ interface ChatInterfaceProps {
   cachedChunks: DocumentChunk[];
   provider: AIProvider;
   toggleSidebar?: () => void;
+  currentChatId: string | null;
+  onFirstMessage: (m: Message) => void;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
-  messages,
+  messages = [],
   setMessages,
   profile,
   documents,
   cachedChunks,
   provider,
-  toggleSidebar
+  toggleSidebar,
+  currentChatId,
+  onFirstMessage
 }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [retrieving, setRetrieving] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Safely ensure messages is always an array
+  const safeMessages = Array.isArray(messages) ? messages : [];
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isLoading, retrieving]);
+  }, [safeMessages, isLoading, retrieving]);
 
   const performSemanticRetrieval = async (query: string): Promise<DocumentChunk[]> => {
     if (cachedChunks.length === 0) return [];
 
     try {
-      // ALWAYS use Gemini for retrieval because documents are indexed with Gemini embeddings
-      // Pass 'true' to indicate this is a search query for optimized embedding
       const queryEmbedding = await geminiService.getEmbedding(query, true);
 
       const scoredChunks = cachedChunks.map(chunk => {
         const similarity = geminiService.cosineSimilarity(queryEmbedding, chunk.embedding);
-
-        return {
-          chunk,
-          score: similarity
-        };
+        return { chunk, score: similarity };
       });
 
       return scoredChunks
-        .filter(item => item.score > 0.45) // Slightly higher threshold for quality
+        .filter(item => item.score > 0.4)
         .sort((a, b) => b.score - a.score)
         .slice(0, 5)
         .map(item => item.chunk);
     } catch (e) {
-      console.warn("Retrieval skipped: Gemini API key might be missing for embeddings.", e);
+      console.warn("Retrieval skipped", e);
       return [];
-    }
-  };
-
-  const clearHistory = async () => {
-    if (confirm("Clear current conversation history? This cannot be undone.")) {
-      await storageService.saveChat([]);
-      setMessages([]);
     }
   };
 
@@ -80,21 +73,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       timestamp: Date.now(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
     const currentInput = input;
     setInput('');
     setIsLoading(true);
     setRetrieving(true);
+
+    // If this is the start of a new chat, initialize the session
+    if (!currentChatId) {
+      onFirstMessage(userMessage);
+    } else {
+      setMessages(prev => [...(Array.isArray(prev) ? prev : []), userMessage]);
+    }
 
     try {
       const relevantChunks = await performSemanticRetrieval(currentInput);
       setRetrieving(false);
 
       let response;
+      // Use latest messages including the one we just added
+      const activeHistory = !currentChatId ? [] : safeMessages;
+
       if (provider === 'groq') {
-        response = await groqService.askGroq(currentInput, messages, profile, relevantChunks);
+        response = await groqService.askGroq(currentInput, activeHistory, profile, relevantChunks);
       } else {
-        response = await geminiService.askPI(currentInput, messages, profile, relevantChunks);
+        response = await geminiService.askPI(currentInput, activeHistory, profile, relevantChunks);
       }
 
       const aiMessage: Message = {
@@ -105,16 +107,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         sources: response.sources,
       };
 
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages(prev => [...(Array.isArray(prev) ? prev : []), aiMessage]);
     } catch (err: any) {
       console.error(err);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        content: `Error: ${err.message || "Unknown error"}. Note: Gemini API key is required for Memory retrieval, even if using Groq for chat.`,
+        content: `Error: ${err.message || "Unknown error"}.`,
         timestamp: Date.now(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => [...(Array.isArray(prev) ? prev : []), errorMessage]);
     } finally {
       setIsLoading(false);
       setRetrieving(false);
@@ -139,45 +141,37 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2 lg:gap-4">
-          {messages.length > 0 && (
-            <button
-              onClick={clearHistory}
-              className="text-[10px] font-black text-zinc-500 hover:text-red-500 uppercase tracking-widest transition-colors mr-2 hidden sm:block"
-            >
-              Clear Chat
-            </button>
-          )}
           <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-xl border ${provider === 'gemini' ? 'text-blue-400 border-blue-500/20 bg-blue-500/5' : 'text-orange-400 border-orange-500/20 bg-orange-500/5'
             }`}>
-            {provider === 'gemini' ? 'Gemini 3 Pro' : 'Groq LPU'}
+            {provider === 'gemini' ? 'Gemini 3 Flash' : 'Groq LPU'}
           </span>
         </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 lg:px-20 lg:py-12 space-y-10 pb-32 scroll-smooth">
-        {messages.length === 0 && (
+        {safeMessages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto space-y-8 animate-fade-in">
-            <div className={`w-24 h-24 rounded-[2.5rem] flex items-center justify-center shadow-2xl transition-all duration-700 transform hover:rotate-6 ${provider === 'gemini' ? 'bg-blue-600 shadow-blue-500/20' : 'bg-orange-600 shadow-orange-500/20'
+            <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center shadow-2xl transition-all duration-700 transform hover:rotate-6 ${provider === 'gemini' ? 'bg-blue-600 shadow-blue-500/20' : 'bg-orange-600 shadow-orange-500/20'
               }`}>
-              <span className="text-white text-3xl font-black">VA</span>
+              <span className="text-white text-2xl font-black">VA</span>
             </div>
             <div className="space-y-4">
-              <h3 className="text-3xl font-black text-white tracking-tighter">Your Intelligence Partner.</h3>
-              <p className="text-zinc-500 text-sm font-medium leading-relaxed">
-                I'm VORA Assist. I've indexed your context as {profile.role || 'a professional'}. Use me to query your {documents.length} local documents via {provider.toUpperCase()}.
+              <h3 className="text-2xl font-black text-white tracking-tighter">Your Intelligent Assistant</h3>
+              <p className="text-zinc-500 text-xs font-medium leading-relaxed">
+                Send a message to start a new session. I'll search your {documents.length} local documents to provide context-aware answers.
               </p>
             </div>
           </div>
         )}
 
-        {messages.map((msg) => (
+        {safeMessages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[95%] sm:max-w-[85%] lg:max-w-[75%] ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
               <div className={`inline-block px-6 py-4 rounded-[1.8rem] text-sm lg:text-[15px] leading-relaxed transition-all shadow-sm ${msg.role === 'user'
                   ? 'bg-zinc-100 text-black font-semibold rounded-tr-none'
                   : 'bg-zinc-900 text-zinc-200 border border-zinc-800 rounded-tl-none'
                 }`}>
-                {msg.content.split('\n').map((line, i) => (
+                {(msg.content || '').split('\n').map((line, i) => (
                   <div key={i} className={line ? 'mb-2 last:mb-0' : 'h-3'}>{line}</div>
                 ))}
               </div>
@@ -202,7 +196,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <span className="w-1 h-1 bg-blue-500 rounded-full animate-ping"></span>
                 <span className="w-1 h-1 bg-blue-500 rounded-full animate-ping delay-75"></span>
               </div>
-              Searching Memory (Gemini Embeddings)
+              Searching Memory (Gemini)
             </div>
           </div>
         )}

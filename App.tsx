@@ -4,7 +4,7 @@ import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import KnowledgeBase from './components/KnowledgeBase';
 import ProfileEditor from './components/ProfileEditor';
-import { UserProfile, Document, Message, DocumentChunk, AIProvider } from './types';
+import { UserProfile, Document, Message, DocumentChunk, AIProvider, ChatSession } from './types';
 import { storageService } from './services/storageService';
 
 const App: React.FC = () => {
@@ -12,43 +12,135 @@ const App: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile>(storageService.getProfile());
   const [documents, setDocuments] = useState<Document[]>([]);
   const [chunks, setChunks] = useState<DocumentChunk[]>([]);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(localStorage.getItem('pi_active_chat'));
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Default to Groq since the user has a key for it
   const [provider, setProvider] = useState<AIProvider>(
     (localStorage.getItem('pi_provider') as AIProvider) || 'groq'
   );
 
-  // Initial load
+  // Initial load with defensive checks
   useEffect(() => {
     const loadData = async () => {
-      const [docs, storedChunks, chatHistory] = await Promise.all([
-        storageService.getDocuments(),
-        storageService.getChunks(),
-        storageService.getChat()
-      ]);
-      setDocuments(docs);
-      setChunks(storedChunks);
-      setMessages(chatHistory);
+      try {
+        const [docs, storedChunks, storedSessions] = await Promise.all([
+          storageService.getDocuments(),
+          storageService.getChunks(),
+          storageService.getChatSessions()
+        ]);
+
+        // Filter out malformed sessions to prevent UI crashes
+        const validSessions = (storedSessions || []).filter(s => s && s.id && Array.isArray(s.messages));
+
+        setDocuments(docs || []);
+        setChunks(storedChunks || []);
+        setSessions(validSessions);
+
+        // Load specific chat if ID exists and is valid
+        if (currentChatId) {
+          const session = await storageService.getChatSession(currentChatId);
+          if (session && Array.isArray(session.messages)) {
+            setMessages(session.messages);
+          } else {
+            console.warn("Session invalid or missing, resetting active chat");
+            setCurrentChatId(null);
+            setMessages([]);
+            localStorage.removeItem('pi_active_chat');
+          }
+        }
+      } catch (error) {
+        console.error("Critical error loading local data:", error);
+        // Fallback to empty state instead of crashing
+        setSessions([]);
+        setMessages([]);
+      }
     };
     loadData();
   }, []);
 
-  // Sync messages and provider to storage
+  // Sync messages of active chat to storage
   useEffect(() => {
-    if (messages.length > 0) {
-      storageService.saveChat(messages);
+    if (currentChatId && messages.length > 0) {
+      const activeSessionSnippet = sessions.find(s => s.id === currentChatId);
+      const title = activeSessionSnippet?.title || messages[0].content.slice(0, 30) + '...';
+
+      const updatedSession: ChatSession = {
+        id: currentChatId,
+        title,
+        messages,
+        updatedAt: Date.now()
+      };
+
+      storageService.saveChatSession(updatedSession).then(() => {
+        storageService.getChatSessions().then(fetched => {
+          const valid = (fetched || []).filter(s => s && s.id);
+          setSessions(valid);
+        });
+      }).catch(err => console.error("Failed to save session:", err));
     }
-  }, [messages]);
+  }, [messages, currentChatId]);
 
   useEffect(() => {
     localStorage.setItem('pi_provider', provider);
   }, [provider]);
 
-  const handleTabChange = (tab: 'chat' | 'knowledge' | 'profile') => {
-    setActiveTab(tab);
+  useEffect(() => {
+    if (currentChatId) {
+      localStorage.setItem('pi_active_chat', currentChatId);
+    } else {
+      localStorage.removeItem('pi_active_chat');
+    }
+  }, [currentChatId]);
+
+  const handleNewChat = () => {
+    setCurrentChatId(null);
+    setMessages([]);
+    setActiveTab('chat');
     setIsSidebarOpen(false);
+  };
+
+  const handleSelectSession = async (id: string) => {
+    try {
+      const session = await storageService.getChatSession(id);
+      if (session && Array.isArray(session.messages)) {
+        setCurrentChatId(id);
+        setMessages(session.messages);
+      } else {
+        alert("This conversation data is corrupted or missing.");
+        handleDeleteSession(id);
+      }
+    } catch (err) {
+      console.error("Error selecting session:", err);
+    }
+    setActiveTab('chat');
+    setIsSidebarOpen(false);
+  };
+
+  const handleDeleteSession = async (id: string) => {
+    if (confirm("Delete this conversation?")) {
+      await storageService.deleteChatSession(id);
+      setSessions(prev => prev.filter(s => s.id !== id));
+      if (currentChatId === id) {
+        handleNewChat();
+      }
+    }
+  };
+
+  const handleFirstMessageSent = (firstMsg: Message) => {
+    const newId = Date.now().toString();
+    const newSession: ChatSession = {
+      id: newId,
+      title: firstMsg.content.slice(0, 30) + '...',
+      messages: [firstMsg],
+      updatedAt: Date.now()
+    };
+    setCurrentChatId(newId);
+    setMessages([firstMsg]);
+    storageService.saveChatSession(newSession).then(() => {
+      storageService.getChatSessions().then(setSessions);
+    });
   };
 
   const isGeminiMissing = () => !process.env.API_KEY;
@@ -74,10 +166,15 @@ const App: React.FC = () => {
       `}>
         <Sidebar
           activeTab={activeTab}
-          setActiveTab={handleTabChange}
+          setActiveTab={setActiveTab}
           provider={provider}
           setProvider={setProvider}
           onClose={() => setIsSidebarOpen(false)}
+          sessions={sessions}
+          currentChatId={currentChatId}
+          onSelectSession={handleSelectSession}
+          onNewChat={handleNewChat}
+          onDeleteSession={handleDeleteSession}
         />
       </div>
 
@@ -91,6 +188,8 @@ const App: React.FC = () => {
             cachedChunks={chunks}
             provider={provider}
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+            currentChatId={currentChatId}
+            onFirstMessage={handleFirstMessageSent}
           />
         )}
 

@@ -1,8 +1,8 @@
 
-import { UserProfile, Document, Message, DocumentChunk } from '../types';
+import { UserProfile, Document, Message, DocumentChunk, ChatSession } from '../types';
 
 const DB_NAME = 'PI_Brain';
-const DB_VERSION = 4; // Bumped version for index verification
+const DB_VERSION = 5; // Bumped version for ChatSession support
 const DOC_STORE = 'documents';
 const CHUNK_STORE = 'chunks';
 const CHAT_STORE = 'chats';
@@ -27,26 +27,19 @@ export const storageService = {
       request.onsuccess = () => resolve(request.result);
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        const transaction = (event.target as IDBOpenDBRequest).transaction;
 
         // Documents Store
         if (!db.objectStoreNames.contains(DOC_STORE)) {
           db.createObjectStore(DOC_STORE, { keyPath: 'id' });
         }
 
-        // Chunks Store + Index
-        let chunkStore;
+        // Chunks Store
         if (!db.objectStoreNames.contains(CHUNK_STORE)) {
-          chunkStore = db.createObjectStore(CHUNK_STORE, { keyPath: 'id' });
-        } else {
-          chunkStore = transaction!.objectStore(CHUNK_STORE);
-        }
-        
-        if (!chunkStore.indexNames.contains('docId')) {
+          const chunkStore = db.createObjectStore(CHUNK_STORE, { keyPath: 'id' });
           chunkStore.createIndex('docId', 'docId', { unique: false });
         }
 
-        // Chat Store
+        // Chat Sessions Store
         if (!db.objectStoreNames.contains(CHAT_STORE)) {
           db.createObjectStore(CHAT_STORE, { keyPath: 'id' });
         }
@@ -54,26 +47,51 @@ export const storageService = {
     });
   },
 
-  saveChat: async (messages: Message[]): Promise<void> => {
+  // Multiple Chat Session Support
+  saveChatSession: async (session: ChatSession): Promise<void> => {
     const db = await storageService.initDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(CHAT_STORE, 'readwrite');
       const store = transaction.objectStore(CHAT_STORE);
-      store.clear();
-      messages.forEach(msg => store.put(msg));
+      store.put(session);
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
     });
   },
 
-  getChat: async (): Promise<Message[]> => {
+  getChatSessions: async (): Promise<ChatSession[]> => {
     const db = await storageService.initDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(CHAT_STORE, 'readonly');
       const store = transaction.objectStore(CHAT_STORE);
       const request = store.getAll();
-      request.onsuccess = () => resolve(request.result.sort((a, b: any) => a.timestamp - b.timestamp));
+      request.onsuccess = () => {
+        const results = request.result as ChatSession[];
+        resolve(results.sort((a, b) => b.updatedAt - a.updatedAt));
+      };
       request.onerror = () => reject(request.error);
+    });
+  },
+
+  getChatSession: async (id: string): Promise<ChatSession | null> => {
+    const db = await storageService.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(CHAT_STORE, 'readonly');
+      const store = transaction.objectStore(CHAT_STORE);
+      const request = store.get(id);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  deleteChatSession: async (id: string): Promise<void> => {
+    const db = await storageService.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(CHAT_STORE, 'readwrite');
+      const store = transaction.objectStore(CHAT_STORE);
+      store.delete(id);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
     });
   },
 
@@ -120,10 +138,7 @@ export const storageService = {
       const chunkStore = transaction.objectStore(CHUNK_STORE);
       const chunkIndex = chunkStore.index('docId');
 
-      // Delete the document entry
       docStore.delete(id);
-
-      // Find and delete all related chunks
       const request = chunkIndex.getAllKeys(id);
       request.onsuccess = () => {
         const keys = request.result;

@@ -35,6 +35,13 @@ export interface Message {
   sources?: string[];
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: Message[];
+  updatedAt: number;
+}
+
 export type AIProvider = 'gemini' | 'groq';
 
 export interface AppState {
@@ -43,4 +50,6 @@ export interface AppState {
   messages: Message[];
   isSearching: boolean;
   provider: AIProvider;
+  sessions: ChatSession[];
+  currentChatId: string | null;
 }

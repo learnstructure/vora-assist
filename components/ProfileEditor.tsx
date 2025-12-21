@@ -53,7 +53,7 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ profile, setProfile }) =>
               <p className="text-blue-500 text-sm font-black uppercase tracking-[0.3em] mt-1">{profile.role || 'Partner'}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => setIsEditing(true)}
             className="px-5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 text-[10px] font-black uppercase tracking-widest hover:text-white hover:border-zinc-700 transition-all"
           >
@@ -65,7 +65,7 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ profile, setProfile }) =>
           <section className="bg-zinc-900/40 border border-zinc-800/50 rounded-[2.5rem] p-8 lg:p-10">
             <h2 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.25em] mb-6">Partner Context</h2>
             <p className="text-zinc-300 text-lg lg:text-xl font-medium leading-relaxed italic">
-              "{profile.bio || "No background story provided yet. PI is operating on general intelligence."}"
+              "{profile.bio || "No background story provided yet. VORA is operating on general intelligence."}"
             </p>
           </section>
 
@@ -109,11 +109,11 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ profile, setProfile }) =>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
         <div>
           <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tighter mb-2 uppercase">Identity Setup</h1>
-          <p className="text-zinc-500 text-sm font-medium">Configure PI's understanding of your professional world.</p>
+          <p className="text-zinc-500 text-sm font-medium">Configure VORA's understanding of your professional world.</p>
         </div>
         <div className="flex items-center gap-3">
           {profile.name && (
-            <button 
+            <button
               onClick={() => setIsEditing(false)}
               className="text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-widest px-4"
             >
@@ -133,20 +133,20 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ profile, setProfile }) =>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-3">
               <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Legal Name / Moniker</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={formData.name}
-                onChange={e => setFormData({...formData, name: e.target.value})}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Alex Rivera"
                 className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all placeholder:text-zinc-700"
               />
             </div>
             <div className="space-y-3">
               <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Professional Role</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={formData.role}
-                onChange={e => setFormData({...formData, role: e.target.value})}
+                onChange={e => setFormData({ ...formData, role: e.target.value })}
                 placeholder="AI Research Engineer"
                 className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all placeholder:text-zinc-700"
               />
@@ -155,10 +155,10 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ profile, setProfile }) =>
 
           <div className="space-y-3">
             <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Partner Context (Bio)</label>
-            <textarea 
+            <textarea
               value={formData.bio}
-              onChange={e => setFormData({...formData, bio: e.target.value})}
-              placeholder="What specific details should PI remember about your mission and background?"
+              onChange={e => setFormData({ ...formData, bio: e.target.value })}
+              placeholder="What specific details should VORA remember about your mission and background?"
               rows={4}
               className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 resize-none transition-all leading-relaxed placeholder:text-zinc-700"
             />
@@ -178,7 +178,7 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ profile, setProfile }) =>
                 </span>
               ))}
             </div>
-            <input 
+            <input
               type="text"
               value={tagInput}
               onChange={e => setTagInput(e.target.value)}
@@ -189,7 +189,7 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ profile, setProfile }) =>
           </div>
         </section>
 
-        <button 
+        <button
           onClick={handleSave}
           disabled={!formData.name}
           className="w-full bg-white text-black hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed font-black py-5 rounded-3xl transition-all shadow-2xl active:scale-[0.98] uppercase tracking-[0.3em] text-[11px]"

@@ -182,7 +182,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
             </div>
             <p className="text-xl font-black text-zinc-400 tracking-tight">Memory is Empty</p>
             <p className="text-sm mt-3 text-zinc-600 px-10 text-center font-medium max-w-sm leading-relaxed">
-              Upload documents. PI uses Gemini to index them for cross-model context-aware chat.
+              Upload documents. VORA uses Gemini to index them for cross-model context-aware chat.
             </p>
           </div>
         ) : (
