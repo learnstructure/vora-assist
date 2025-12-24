@@ -3,19 +3,28 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORA Assist | Intelligent Partner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <style>
+        :root {
+            --bg-deep: #020617;
+            /* slate-950 */
+            --bg-card: #0f172a;
+            /* slate-900 */
+            --border-muted: #1e293b;
+            /* slate-800 */
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #09090b;
-            color: #fafafa;
+            background-color: var(--bg-deep);
+            color: #f1f5f9;
         }
 
         .mono {
@@ -27,16 +36,16 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: #09090b;
+            background: var(--bg-deep);
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #27272a;
+            background: #334155;
             border-radius: 10px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #3f3f46;
+            background: #475569;
         }
 
         .sidebar-transition {
@@ -47,30 +56,30 @@
         .markdown-content h1,
         .markdown-content h2,
         .markdown-content h3 {
-            color: #d4d4d8;
-            /* zinc-300 - Softened from zinc-200 */
-            font-weight: 700;
-            /* Slightly reduced from 800 */
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
+            color: #f1f5f9;
+            font-weight: 800;
+            margin-top: 1.75rem;
+            margin-bottom: 1rem;
             letter-spacing: -0.025em;
             line-height: 1.2;
         }
 
         .markdown-content h1 {
-            font-size: 1.4rem;
+            font-size: 1.5rem;
         }
 
         .markdown-content h2 {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
         }
 
         .markdown-content h3 {
-            font-size: 1.05rem;
+            font-size: 1.15rem;
         }
 
         .markdown-content p {
-            margin-bottom: 1rem;
+            margin-bottom: 1.25rem;
+            line-height: 1.7;
+            color: #cbd5e1;
         }
 
         .markdown-content p:last-child {
@@ -79,7 +88,7 @@
 
         .markdown-content ul,
         .markdown-content ol {
-            margin-bottom: 1.25rem;
+            margin-bottom: 1.5rem;
             padding-left: 1.5rem;
         }
 
@@ -92,45 +101,82 @@
         }
 
         .markdown-content li {
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.6rem;
+            color: #cbd5e1;
         }
 
-        .markdown-content li>p {
-            margin-bottom: 0.25rem;
-        }
-
+        /* IMPROVED: Softened bold text contrast */
         .markdown-content strong {
-            color: #747491;
-            /* zinc-300 - Softened from zinc-100 */
-            font-weight: 600;
-            /* Slightly reduced from 700 for better elegance */
+            color: #cbd5e1;
+            font-weight: 700;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        /* Code Block Styling */
+        .code-block-wrapper {
+            position: relative;
+            margin: 1.5rem 0;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            background-color: #0b0f1a;
+            border: 1px solid var(--border-muted);
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            padding: 0.4rem 0.75rem;
+            background: #1e293b;
+            color: #94a3b8;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-radius: 0.5rem;
+            border: 1px solid #334155;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0;
+            z-index: 10;
+        }
+
+        .code-block-wrapper:hover .copy-button {
+            opacity: 1;
+        }
+
+        .copy-button:hover {
+            background: #334155;
+            color: #f1f5f9;
+        }
+
+        .copy-button.copied {
+            background: #059669;
+            color: white;
+            border-color: #059669;
+        }
+
+        .markdown-content pre {
+            padding: 1.25rem;
+            overflow-x: auto;
+            margin: 0;
         }
 
         .markdown-content code {
             font-family: 'JetBrains Mono', monospace;
-            background-color: #18181b;
-            /* zinc-900 */
-            padding: 0.15rem 0.3rem;
-            border-radius: 0.3rem;
-            font-size: 0.875em;
-            color: #60a5fa;
-            /* blue-400 - Softer than blue-500 */
-        }
-
-        .markdown-content pre {
-            background-color: #09090b;
-            border: 1px solid #18181b;
-            padding: 1rem;
-            border-radius: 0.75rem;
-            overflow-x: auto;
-            margin-bottom: 1.25rem;
+            background-color: #1e293b;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.4rem;
+            font-size: 0.9em;
+            color: #93c5fd;
         }
 
         .markdown-content pre code {
             background-color: transparent;
             padding: 0;
-            color: #a1a1aa;
-            /* zinc-400 */
+            color: #e2e8f0;
+            font-size: 0.85em;
+            line-height: 1.6;
         }
     </style>
     <script type="importmap">
@@ -150,7 +196,7 @@
 </script>
 </head>
 
-<body class="overflow-hidden bg-[#09090b]">
+<body class="overflow-hidden bg-[#020617]">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>
