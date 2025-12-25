@@ -33,12 +33,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [retrieving, setRetrieving] = useState(false);
+  const [isSearchingWeb, setIsSearchingWeb] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showHistoryIndicator, setShowHistoryIndicator] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const safeMessages = Array.isArray(messages) ? messages : [];
+
+  // Show "Context Restored" briefly when switching to an existing session with history
+  useEffect(() => {
+    if (currentChatId && messages.length > 0) {
+      setShowHistoryIndicator(true);
+      const timer = setTimeout(() => setShowHistoryIndicator(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentChatId]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -49,7 +60,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Custom marked renderer for code blocks with copy buttons
   useEffect(() => {
     const renderer = new marked.Renderer();
     renderer.code = ({ text, lang }) => {
@@ -63,7 +73,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     };
     marked.setOptions({ renderer });
 
-    // Global helper for the copy buttons
     (window as any).copyToClipboard = (btn: HTMLButtonElement, codeId: string) => {
       const codeElement = document.getElementById(codeId);
       if (codeElement) {
@@ -84,9 +93,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [safeMessages, isLoading, retrieving]);
+  }, [safeMessages, isLoading, retrieving, isSearchingWeb]);
 
-  // Handle textarea auto-resize
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -99,7 +107,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     try {
       const queryEmbedding = await geminiService.getEmbedding(query, true);
-
       const scoredChunks = cachedChunks.map(chunk => {
         const similarity = geminiService.cosineSimilarity(queryEmbedding, chunk.embedding);
         return { chunk, score: similarity };
@@ -142,6 +149,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const allDocTitles = documents.map(d => d.title);
       setRetrieving(false);
 
+      if (relevantChunks.length === 0 && provider === 'gemini') {
+        setIsSearchingWeb(true);
+      }
+
       let response;
       const activeHistory = !currentChatId ? [] : safeMessages;
 
@@ -157,6 +168,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         content: response.text,
         timestamp: Date.now(),
         sources: response.sources,
+        groundingSources: response.groundingSources,
       };
 
       setMessages(prev => [...(Array.isArray(prev) ? prev : []), aiMessage]);
@@ -172,6 +184,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     } finally {
       setIsLoading(false);
       setRetrieving(false);
+      setIsSearchingWeb(false);
     }
   };
 
@@ -188,10 +201,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       e.preventDefault();
       handleSend();
     }
-  };
-
-  const getPlaceholder = () => {
-    return "Message VORA...";
   };
 
   return (
@@ -212,6 +221,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2 lg:gap-4">
+          {showHistoryIndicator && (
+            <span className="text-[9px] font-black text-green-500 uppercase tracking-widest animate-fade-in flex items-center gap-1.5 mr-2">
+              <span className="w-1 h-1 rounded-full bg-green-500"></span>
+              Session Context Restored
+            </span>
+          )}
           <span className={`text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-xl border flex items-center gap-2 ${provider === 'gemini' ? 'text-blue-500/60 border-blue-500/20 bg-blue-500/5' : 'text-orange-500/60 border-orange-500/20 bg-orange-500/5'
             }`}>
             {provider === 'gemini' ? 'Gemini 3 Flash' : (
@@ -260,33 +275,53 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 )}
               </div>
 
-              {msg.sources && msg.sources.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2 justify-start px-1 opacity-60">
-                  <span className="text-[8px] text-slate-600 font-bold uppercase tracking-widest self-center mr-1">Refs:</span>
-                  {msg.sources.map((s, idx) => (
-                    <span key={idx} className="px-2 py-0.5 rounded-lg bg-slate-900/50 border border-slate-800 text-[8px] text-slate-500 font-bold uppercase tracking-tight">
-                      {s}
-                    </span>
-                  ))}
-                </div>
-              )}
+              <div className="mt-3 flex flex-col gap-2">
+                {msg.sources && msg.sources.length > 0 && (
+                  <div className="flex flex-wrap gap-2 justify-start px-1 opacity-60">
+                    <span className="text-[8px] text-slate-600 font-bold uppercase tracking-widest self-center mr-1">Memory Bank:</span>
+                    {msg.sources.map((s, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded-lg bg-slate-900/50 border border-slate-800 text-[8px] text-slate-500 font-bold uppercase tracking-tight">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {msg.groundingSources && msg.groundingSources.length > 0 && (
+                  <div className="flex flex-wrap gap-2 justify-start px-1">
+                    <span className="text-[8px] text-blue-500/60 font-bold uppercase tracking-widest self-center mr-1">Web Sources:</span>
+                    {msg.groundingSources.map((s, idx) => (
+                      <a
+                        key={idx}
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-cyan-500/5 border border-cyan-500/20 text-[8px] text-cyan-400 font-bold uppercase tracking-tight hover:bg-cyan-500/10 hover:border-cyan-500/40 transition-all shadow-lg shadow-cyan-500/5"
+                      >
+                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+                        {s.title}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ))}
 
-        {retrieving && (
+        {(retrieving || isSearchingWeb) && (
           <div className="flex justify-start">
             <div className="flex items-center gap-3 bg-slate-900/20 border border-slate-800/30 px-4 py-2 rounded-xl text-[9px] text-slate-600 font-bold tracking-widest uppercase">
               <div className="flex gap-1">
-                <span className="w-1 h-1 bg-blue-500/40 rounded-full animate-pulse"></span>
-                <span className="w-1 h-1 bg-blue-500/40 rounded-full animate-pulse delay-75"></span>
+                <span className={`w-1 h-1 rounded-full animate-pulse ${isSearchingWeb ? 'bg-cyan-500' : 'bg-blue-500/40'}`}></span>
+                <span className={`w-1 h-1 rounded-full animate-pulse delay-75 ${isSearchingWeb ? 'bg-cyan-500' : 'bg-blue-500/40'}`}></span>
               </div>
-              Retrieving context...
+              {isSearchingWeb ? 'Consulting the Web...' : 'Retrieving context...'}
             </div>
           </div>
         )}
 
-        {isLoading && !retrieving && (
+        {isLoading && !retrieving && !isSearchingWeb && (
           <div className="flex justify-start">
             <div className="bg-[#0f172a] border border-[#1e293b] px-6 py-4 rounded-2xl rounded-tl-none opacity-50">
               <div className="flex gap-2">
@@ -297,7 +332,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </div>
           </div>
         )}
-        {/* Spacer for bottom bar */}
         <div className="h-4"></div>
       </div>
 
@@ -312,7 +346,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={getPlaceholder()}
+                placeholder="Message VORA..."
                 className="flex-1 bg-transparent py-3 text-[14px] text-slate-300 focus:outline-none placeholder:text-slate-600 resize-none max-h-[180px] custom-scrollbar"
               />
               <button

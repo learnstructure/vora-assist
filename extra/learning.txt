@@ -51,3 +51,41 @@ The "Search Engine": The logic that compares vectors and ranks which document is
 The "Persona": Your bio, role, and tech stack settings.
 The "Chat History": Your previous messages.
 Technical Note: While there are technologies like TensorFlow.js or WebGPU that allow some small embedding models to run 100% inside the browser without an API, they are currently much less "smart" than the text-embedding-004 model you are using. By using Gemini for embeddings, VORA gets much higher accuracy in finding the right documents.
+
+Features:
+1. VORA remembers previous few messages from the same chat session, which is preferrable considering performance
+2. VORA does not remember messages from other chat sessions, which is preferrable
+3. If you delete docs from memory bank, the storageService removes the text and the vector embeddings (the mathematical "meaning" of the text) from your browser's IndexedDB.
+
+
+Improvements to be made:
+VORA is already a sophisticated RAG-based partner, but to take it from a "document searcher" to a true "Intelligent Partner," we should focus on Proactive Intelligence, Deeper Context, and Frictionless Ingestion.
+Here are my top architectural and functional suggestions to make the app significantly more useful:
+1. Hybrid Search (Semantic + Keyword)
+Currently, VORA uses Vector Search, which is great for "vibes" and concepts but often fails at finding specific technical IDs, part numbers, or unique names (e.g., searching for "Project-X-99" might fail if the vector for "Project" is too generic).
+Improvement: Implement a Full-Text Search (BM25) index alongside your vectors.
+Result: When you search for a specific term, VORA uses both "meaning" and "exact match" to find the right chunk.
+2. Autonomous Persona "Auto-Evolve"
+Your Bio is currently static—it only changes when you manually edit it.
+Improvement: Use an LLM to periodically "Analyze the Library." The AI can scan your uploaded documents and say, "I've noticed you uploaded 5 new papers on Quantum Computing. Should I update your Expertise Stack to include 'Quantum Physics' and adjust my tone to be more technical?"
+Result: VORA grows with you automatically without you having to manage the profile.
+3. "Memory Consolidation" (Summarization)
+If you upload a 50-page PDF, VORA only sees 1,000-character snippets at a time. It never sees the "Big Picture" of the document.
+Improvement: When a document is uploaded, generate an Executive Summary and store it as a special metadata field.
+Result: When you ask "What is the overall goal of this project?", VORA can look at the summary first rather than guessing based on small snippets.
+4. Multimodal Memory (Image-to-Bank)
+Sometimes your data isn't in a PDF; it's a screenshot, a photo of a whiteboard, or a handwritten note.
+Improvement: Add a "Vision" upload feature. Use Gemini 1.5 Flash to transcribe images and store the OCR text in the Memory Bank.
+Result: You can snap a photo of a meeting's whiteboard and ask VORA about it a week later.
+5. Web Grounding (Real-time Context)
+VORA knows your documents, but it doesn't know what happened in the world 5 minutes ago.
+Improvement: Integrate the googleSearch tool for Gemini.
+Result: You could ask, "Based on my mission to build a sustainable startup, what are the latest government grants announced in the news today?" VORA would combine your private bio with real-time web data.
+6. Graph-based Memory (Relationships)
+Documents aren't isolated; they are connected. A contract relates to a project, which relates to a client.
+Improvement: Use the LLM to identify "Entities" (People, Projects, Dates) across all documents and build a small Knowledge Graph.
+Result: You could ask, "Who are all the people mentioned across my legal files and my project notes?"
+7. Offline-First "Tiny" Models
+Since you want a personal assistant, you might want to use it while traveling or in low-connectivity areas.
+Improvement: Integrate a small local model like Gemma 2b or Llama 3b via WebGPU/Wasm (using libraries like Transformers.js).
+Result: Basic tasks, bio editing, and document sorting could happen 100% offline, only calling Gemini/Groq for heavy reasoning.

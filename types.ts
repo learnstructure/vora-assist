@@ -27,12 +27,18 @@ export interface DocumentChunk {
   embedding: number[];
 }
 
+export interface GroundingSource {
+  title: string;
+  url: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'model';
   content: string;
   timestamp: number;
   sources?: string[];
+  groundingSources?: GroundingSource[];
 }
 
 export interface ChatSession {

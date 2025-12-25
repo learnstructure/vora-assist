@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { UserProfile, Message, DocumentChunk } from '../types';
+import { UserProfile, Message, DocumentChunk, GroundingSource } from '../types';
 
 const CHAT_MODEL = 'gemini-3-flash-preview';
 const EMBEDDING_MODEL = 'text-embedding-004';
@@ -55,7 +55,7 @@ export const geminiService = {
     profile: UserProfile,
     relevantChunks: DocumentChunk[],
     allDocTitles: string[] = []
-  ): Promise<{ text: string; sources: string[] }> => {
+  ): Promise<{ text: string; sources: string[]; groundingSources?: GroundingSource[] }> => {
     if (!process.env.API_KEY) throw new Error("Gemini API Key is missing.");
 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -64,35 +64,33 @@ export const geminiService = {
       You are VORA Assist, a high-fidelity Intelligent Partner.
       
       ### CORE IDENTITY & MISSION (CRITICAL MANDATE)
-      This is who you are serving. You MUST internalize this identity to provide relevant value.
       User Name: ${profile.name || 'Kaelen Voss'}
       Current Role: ${profile.role || 'User'}
-      BIO, GOALS & MISSION: ${profile.bio || 'General Support (No specific mission provided)'}
+      BIO, GOALS & MISSION: ${profile.bio || 'General Support'}
       Expertise Stack: ${profile.technicalStack.join(', ') || 'General Knowledge'}
 
       ### OPERATIONAL DIRECTIVE
-      The content in "BIO, GOALS & MISSION" is your primary framework for decision-making and tone. Everything you generate should move the user closer to these goals or reflect their specific background.
+      Your primary framework is the "BIO, GOALS & MISSION". Tailor all responses to support these goals.
+      IMPORTANT: You have been provided with the conversation history below. Use it to maintain absolute continuity in your logic and suggestions.
 
-      ### MEMORY BANK OVERVIEW
-      You have access to a private document library. 
+      ### MEMORY BANK OVERVIEW (PRIVATE DATA)
       Total Documents: ${allDocTitles.length}
-      Library Index (Titles): ${allDocTitles.length > 0 ? allDocTitles.join(', ') : 'Empty'}
+      Library Index: ${allDocTitles.length > 0 ? allDocTitles.join(', ') : 'Empty'}
 
       ### SEMANTIC SEARCH RESULTS
-      The following are specific excerpts from the Memory Bank that matched the user's current query:
-      
+      The following are excerpts from the user's private library that matched the query:
       ${relevantChunks.length > 0
         ? relevantChunks.map(chunk => `[Source: ${chunk.docTitle}]: ${chunk.text}`).join('\n\n')
-        : 'NO HIGH-CONFIDENCE MATCHES FOUND for this specific query.'
+        : 'NO LOCAL DATA MATCHED.'
       }
 
-      ### PROTOCOL
-      - Prioritize the provided snippets.
-      - If answering from memory, cite the source title.
-      - Maintain a professional, executive-level tone that aligns with the user's defined role and goals.
+      ### WEB SEARCH PROTOCOL
+      - If the private data is insufficient or the query requires real-time information, use the Google Search tool.
+      - Synthesize private memory with public web data to provide a comprehensive answer.
     `.trim();
 
-    const contents = history.slice(-6).map(msg => ({
+    // Increased history context to 12 for deeper session memory
+    const contents = history.slice(-12).map(msg => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }]
     }));
@@ -109,13 +107,32 @@ export const geminiService = {
         config: {
           systemInstruction,
           temperature: 0.5,
+          tools: [{ googleSearch: {} }]
         }
       });
 
       const text = response.text || "I'm sorry, I couldn't generate a response.";
       const sources = Array.from(new Set(relevantChunks.map(c => c.docTitle)));
 
-      return { text, sources };
+      const groundingSources: GroundingSource[] = [];
+      const metadata = response.candidates?.[0]?.groundingMetadata;
+
+      if (metadata?.groundingChunks) {
+        metadata.groundingChunks.forEach((chunk: any) => {
+          if (chunk.web && chunk.web.uri) {
+            groundingSources.push({
+              title: chunk.web.title || 'Web Source',
+              url: chunk.web.uri
+            });
+          }
+        });
+      }
+
+      return {
+        text,
+        sources,
+        groundingSources: groundingSources.length > 0 ? groundingSources : undefined
+      };
     } catch (error: any) {
       console.error("Gemini Error:", error);
       throw error;

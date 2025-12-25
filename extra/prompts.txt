@@ -38,6 +38,17 @@ Also make these changes:
 1. There is a text "CTRL+ENTER TO SEND" at the bottom of input field on the chat page. Please remove that.
 2. The app now works perfect for PCs and android phones. But there is still an issue in IPAD. In my IPad in chat page, sometimes the icon to bring the sidebar gets hidden to the top and sometimes the input gets hidden to the bottom
 
+Perfect. Everything's working now. Can you suggest me ways to improve this app to make it more useful? Please look everything carefully and suggest me good ideas. Don't change the code at this moment
+
+We will implement all of these one by one. But for now let's go with Web Grounding (Real-time Context) using googleSearch tool. Implement this and also let me know how it works. Does it need API?   
+
+I have an honest question to ask you. I just ran out of gemini API quota for today because I have to frequently make API requests as I am building the app. What I wanted to know is: can I create multiple gemini APIs and use them in my app, so when one API key does not work, it can switch automatically to other APIs? Are there any drawbacks to this?
+->Caution: do not attempt this
+
+Okay, I will later upgrade my plan rather than creating multiple APIs. 
+I have the next question. Currently, do the models know about the previous messages from the same chat session? What about the messages in other chat sessions? And what happens when I delete conversations or memory?
+
+I have important follow up question. What if I want to continue the chat some time later or switch between chats? Would the models be able to remember the messages within the same session? 
 
 
 
