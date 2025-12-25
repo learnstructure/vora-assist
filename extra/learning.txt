@@ -1,0 +1,53 @@
+1. Document Ingestion & Text Extraction
+When you drop a file into the Memory Bank, the app first needs to turn "blobs" (binary data like a PDF or Word file) into raw text strings that an AI can read.
+PDFs: The app uses pdfjs-dist to "print" the text out of the document's layers.
+Word (.docx): It uses mammoth to strip away the styling and XML structure, leaving only the text.
+Chunking: The app then performs Fixed-size Chunking. It breaks your long text into smaller "snippets" (1,000 characters each). This is done because AI models have a limit on how much information they can process at once, and smaller snippets allow for more precise searching.
+2. The Embedding Process (The "Math-ification")
+This is where the Gemini API comes in. Computers don't understand words; they understand numbers.
+Vectorization: Each text chunk is sent to Gemini's text-embedding-004 model.
+The Embedding: The model returns a Dense Vector—which is essentially a long list of numbers (coordinates).
+Semantic Space: These numbers represent the meaning of the text. If two sentences have similar meanings (e.g., "The cat is on the mat" and "A feline is sitting on the rug"), their vectors will be very close to each other in mathematical "space," even if they use different words.
+3. Local-First Persistent Storage
+You asked if these are stored in the browser so parsing doesn't happen every time. Yes.
+IndexedDB: Unlike "LocalStorage" (which is tiny and only for simple settings), your app uses IndexedDB. This is a full-featured, non-relational database built into your web browser.
+No Re-parsing: Once a file is processed, the raw text, the metadata (filename), and the Vector Embeddings are all saved into IndexedDB.
+Result: When you refresh the page or come back the next day, the app loads these pre-calculated numbers directly from your hard drive. You don't pay for API costs to re-embed them, and there is zero processing delay.
+4. Semantic Search (Retrieval)
+When you type a message in the chat, a process called Vector Similarity Search occurs:
+Query Embedding: Your question (e.g., "What does my contract say about taxes?") is converted into a vector by Gemini.
+Cosine Similarity: The app runs a mathematical comparison between your "question vector" and all the "document vectors" stored in your IndexedDB.
+The Winnowing: It picks the top 5 or 6 snippets that are mathematically most similar to your question.
+5. Augmentation & Generation
+Finally, the "Retrieval-Augmented" part happens:
+The Prompt: The app creates a massive hidden prompt for the LLM (Gemini Flash or Groq Llama). It looks like this:
+"You are VORA. Here is the user's profile: [Bio]. Here are 5 snippets I found in their private files: [Snippets]. Now, answer this question: [User's Question]."
+The Answer: The AI generates a response based only on the context provided in that prompt. This is why it can answer questions about your specific documents without you having to re-upload them every time.
+Summary of Tech Terms used:
+RAG: Retrieval-Augmented Generation (The overall architecture).
+Embeddings: The numerical representation of meaning.
+Vector Database: Your IndexedDB acting as a store for those numbers.
+Cosine Similarity: The math used to find the "closest" matching documents.
+Local-First: The philosophy that your data stays in your browser's database rather than on a central server.
+In short: Your files are parsed once, converted to math once, stored permanently in your browser, and searched instantly every time you ask a question.
+
+
+
+Here is the exact breakdown of what happens in the cloud versus what happens in your browser:
+1. Document Upload (API Call)
+The Work: Your text is sent to the text-embedding-004 model on Google’s servers.
+The Reason: Creating high-quality embeddings requires a deep neural network that is too large to run efficiently inside a standard web browser.
+Storage: The resulting numbers (the vector) are sent back and saved in your browser's IndexedDB.
+2. User Message Conversion (API Call)
+The Work: When you type "What did I write about taxes?", that specific sentence is sent to the Gemini API.
+The Reason: For "Semantic Search" to work, your question must be turned into a vector using the exact same model that processed your documents. If you used a different local model to vectorize the question, the "coordinates" wouldn't align, and the search would fail.
+The Local Part: Once Gemini sends the "question vector" back to your browser, the comparison (the "Cosine Similarity" math) happens locally in your browser. Your app iterates through every chunk in your local database to find the best match. This part is private and never leaves your machine.
+3. Final Answer Generation (API Call)
+The Work: The combined prompt (Your Bio + Your Question + Found Snippets) is sent to either Gemini or Groq.
+The Reason: This is the heavy lifting where the "reasoning" happens to produce a human-like response.
+Summary of what is strictly "In-Browser":
+The "Library": The actual text of your PDFs and Word files stays in your IndexedDB.
+The "Search Engine": The logic that compares vectors and ranks which document is most relevant.
+The "Persona": Your bio, role, and tech stack settings.
+The "Chat History": Your previous messages.
+Technical Note: While there are technologies like TensorFlow.js or WebGPU that allow some small embedding models to run 100% inside the browser without an API, they are currently much less "smart" than the text-embedding-004 model you are using. By using Gemini for embeddings, VORA gets much higher accuracy in finding the right documents.
