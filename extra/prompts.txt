@@ -50,5 +50,6 @@ I have the next question. Currently, do the models know about the previous messa
 
 I have important follow up question. What if I want to continue the chat some time later or switch between chats? Would the models be able to remember the messages within the same session? 
 
+I have next question. Do the models tend to tie every queries with the information from Identity section, even if they are irrelevant? 
 
 
