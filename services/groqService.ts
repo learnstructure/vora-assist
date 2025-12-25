@@ -1,5 +1,5 @@
 
-import { UserProfile, Message, DocumentChunk, GroqModel } from '../types';
+import { UserProfile, Message, DocumentChunk, GroqModel, AIResponse } from '../types';
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -11,7 +11,7 @@ export const groqService = {
     relevantChunks: DocumentChunk[],
     allDocTitles: string[] = [],
     model: GroqModel = 'llama-3.3-70b-versatile'
-  ): Promise<{ text: string; sources: string[] }> => {
+  ): Promise<AIResponse> => {
     const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
@@ -40,7 +40,6 @@ export const groqService = {
       }
     `;
 
-    // Increased history context to 12 for deeper session memory
     const messages = [
       { role: 'system', content: systemInstruction },
       ...history.slice(-12).map(m => ({
@@ -75,7 +74,7 @@ export const groqService = {
       const text = data.choices[0].message.content;
       const sources = Array.from(new Set(relevantChunks.map(c => c.docTitle)));
 
-      return { text, sources };
+      return { text, sources, groundingSources: undefined };
     } catch (error) {
       console.error("Groq Service Error:", error);
       throw error;

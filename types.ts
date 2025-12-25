@@ -32,6 +32,12 @@ export interface GroundingSource {
   url: string;
 }
 
+export interface AIResponse {
+  text: string;
+  sources: string[];
+  groundingSources?: GroundingSource[];
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'model';

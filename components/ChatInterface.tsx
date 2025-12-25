@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Message, UserProfile, Document, DocumentChunk, AIProvider, GroqModel } from '../types';
+import { Message, UserProfile, Document, DocumentChunk, AIProvider, GroqModel, AIResponse } from '../types';
 import { geminiService } from '../services/geminiService';
 import { groqService } from '../services/groqService';
 import { marked } from 'marked';
@@ -42,7 +42,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const safeMessages = Array.isArray(messages) ? messages : [];
 
-  // Show "Context Restored" briefly when switching to an existing session with history
   useEffect(() => {
     if (currentChatId && messages.length > 0) {
       setShowHistoryIndicator(true);
@@ -153,7 +152,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         setIsSearchingWeb(true);
       }
 
-      let response;
+      let response: AIResponse;
       const activeHistory = !currentChatId ? [] : safeMessages;
 
       if (provider === 'groq') {

@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { UserProfile, Message, DocumentChunk, GroundingSource } from '../types';
+import { UserProfile, Message, DocumentChunk, GroundingSource, AIResponse } from '../types';
 
 const CHAT_MODEL = 'gemini-3-flash-preview';
 const EMBEDDING_MODEL = 'text-embedding-004';
@@ -55,7 +55,7 @@ export const geminiService = {
     profile: UserProfile,
     relevantChunks: DocumentChunk[],
     allDocTitles: string[] = []
-  ): Promise<{ text: string; sources: string[]; groundingSources?: GroundingSource[] }> => {
+  ): Promise<AIResponse> => {
     if (!process.env.API_KEY) throw new Error("Gemini API Key is missing.");
 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -89,7 +89,6 @@ export const geminiService = {
       - Synthesize private memory with public web data to provide a comprehensive answer.
     `.trim();
 
-    // Increased history context to 12 for deeper session memory
     const contents = history.slice(-12).map(msg => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }]
