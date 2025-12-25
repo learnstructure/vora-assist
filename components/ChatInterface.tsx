@@ -184,7 +184,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Ctrl+Enter or Cmd+Enter to send. Enter alone just adds a new line.
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       handleSend();
@@ -192,13 +191,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   const getPlaceholder = () => {
-    if (isMobile) return "Type a message...";
-    return "Type a message (Ctrl+Enter to send)...";
+    return "Message VORA...";
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#020617] relative overflow-hidden antialiased">
-      <div className="h-14 lg:h-16 border-b border-slate-800/40 flex items-center px-4 lg:px-8 bg-slate-950/40 backdrop-blur-xl z-20 sticky top-0 shadow-sm">
+    <div className="flex flex-col h-full bg-[#020617] relative overflow-hidden antialiased overscroll-none">
+      <div className="flex-shrink-0 h-14 lg:h-16 border-b border-slate-800/40 flex items-center px-4 lg:px-8 bg-slate-950/40 backdrop-blur-xl z-20 shadow-sm">
         <div className="flex items-center gap-3">
           {toggleSidebar && (
             <button
@@ -226,7 +224,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 lg:px-24 lg:py-16 space-y-12 pb-44 lg:pb-40 scroll-smooth">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 lg:px-24 lg:py-16 space-y-12 scroll-smooth bg-transparent relative z-10">
         {safeMessages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto space-y-8 animate-fade-in py-20">
             <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-2xl transition-all duration-700 transform hover:scale-105 ${provider === 'gemini' ? 'bg-blue-600/10 border border-blue-500/20 text-blue-400' : 'bg-orange-600/10 border border-orange-500/20 text-orange-400'
@@ -299,10 +297,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </div>
           </div>
         )}
+        {/* Spacer for bottom bar */}
+        <div className="h-4"></div>
       </div>
 
-      <div className="p-4 lg:p-12 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent pb-10 lg:pb-12">
-        <div className="max-w-4xl mx-auto flex flex-col gap-2">
+      <div className="flex-shrink-0 p-4 lg:p-12 bg-slate-950 lg:bg-gradient-to-t lg:from-slate-950 lg:via-slate-950/80 lg:to-transparent z-20 pb-safe shadow-[0_-10px_20px_-10px_rgba(2,6,23,0.5)]">
+        <div className="max-w-4xl mx-auto">
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-blue-600/5 rounded-3xl blur opacity-0 group-focus-within:opacity-100 transition duration-500"></div>
             <div className="relative flex items-end gap-2 bg-slate-900/60 border border-slate-800/40 rounded-3xl p-2 pl-5 pr-2 backdrop-blur-md transition-all shadow-xl">
@@ -325,11 +325,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               </button>
             </div>
           </div>
-          {!isMobile && (
-            <div className="flex justify-end px-4">
-              <span className="text-[8px] font-bold text-slate-700 uppercase tracking-widest">Ctrl + Enter to send</span>
-            </div>
-          )}
         </div>
       </div>
     </div>

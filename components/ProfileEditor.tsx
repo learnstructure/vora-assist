@@ -63,9 +63,9 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ profile, setProfile }) =>
 
         <div className="grid grid-cols-1 gap-8">
           <section className="bg-slate-900/40 border border-slate-800/50 rounded-[2.5rem] p-8 lg:p-10 shadow-sm">
-            <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-[0.25em] mb-6">Identity & Mission</h2>
+            <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-[0.25em] mb-6">Bio & Core Mission</h2>
             <p className="text-slate-300 text-lg lg:text-xl font-medium leading-relaxed italic">
-              "{profile.bio || "No mission defined. VORA is operating on general intelligence."}"
+              "{profile.bio || "No specific mission defined. VORA is operating on general intelligence."}"
             </p>
           </section>
 
@@ -154,11 +154,11 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ profile, setProfile }) =>
           </div>
 
           <div className="space-y-3">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Bio, Goals & Mission</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Bio & Goals</label>
             <textarea
               value={formData.bio}
               onChange={e => setFormData({ ...formData, bio: e.target.value })}
-              placeholder="Provide a detailed mission statement. What are your long-term goals? What should VORA always keep in mind when assisting you? (e.g., 'I am building a sustainable energy startup and need help with technical documentation and investor relations.')"
+              placeholder="Describe your background, long-term mission, and current goals. What drives your work? What specific context should VORA always prioritize when helping you? Be as detailed as possible."
               rows={6}
               className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 resize-none transition-all leading-relaxed placeholder:text-slate-800 shadow-inner"
             />

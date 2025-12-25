@@ -158,7 +158,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-200 overflow-hidden relative">
+    <div className="fixed inset-0 flex bg-zinc-950 text-zinc-200 overflow-hidden antialiased">
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
@@ -187,7 +187,7 @@ const App: React.FC = () => {
         />
       </div>
 
-      <main className="flex-1 h-full overflow-hidden flex flex-col min-w-0">
+      <main className="flex-1 h-full relative overflow-hidden flex flex-col min-w-0">
         {activeTab === 'chat' && (
           <ChatInterface
             messages={messages}
@@ -204,39 +204,43 @@ const App: React.FC = () => {
         )}
 
         {activeTab === 'knowledge' && (
-          <div className="flex-1 flex flex-col min-w-0 h-full">
-            <div className="lg:hidden h-14 border-b border-zinc-800 flex items-center px-4 bg-zinc-950/80 backdrop-blur-md">
+          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+            <div className="lg:hidden h-14 border-b border-zinc-800 flex items-center px-4 bg-zinc-950/80 backdrop-blur-md z-20 flex-shrink-0">
               <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-zinc-400">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
               </button>
               <span className="ml-2 font-bold text-sm text-zinc-200 uppercase tracking-widest">Memory Bank</span>
             </div>
-            <KnowledgeBase
-              documents={documents}
-              setDocuments={setDocuments}
-              setChunks={setChunks}
-              provider={provider}
-            />
+            <div className="flex-1 overflow-y-auto">
+              <KnowledgeBase
+                documents={documents}
+                setDocuments={setDocuments}
+                setChunks={setChunks}
+                provider={provider}
+              />
+            </div>
           </div>
         )}
 
         {activeTab === 'profile' && (
-          <div className="flex-1 flex flex-col min-w-0 h-full">
-            <div className="lg:hidden h-14 border-b border-zinc-800 flex items-center px-4 bg-zinc-950/80 backdrop-blur-md">
+          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+            <div className="lg:hidden h-14 border-b border-zinc-800 flex items-center px-4 bg-zinc-950/80 backdrop-blur-md z-20 flex-shrink-0">
               <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-zinc-400">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
               </button>
               <span className="ml-2 font-bold text-sm text-zinc-200 uppercase tracking-widest">Persona</span>
             </div>
-            <ProfileEditor
-              profile={profile}
-              setProfile={setProfile}
-            />
+            <div className="flex-1 overflow-y-auto">
+              <ProfileEditor
+                profile={profile}
+                setProfile={setProfile}
+              />
+            </div>
           </div>
         )}
       </main>
 
-      <div className="fixed bottom-4 right-4 z-[60] flex flex-col items-end gap-2">
+      <div className="fixed bottom-4 right-4 z-[60] flex flex-col items-end gap-2 pointer-events-none">
         {isGeminiMissing() && (
           <div className="bg-blue-950/80 border border-blue-500/30 backdrop-blur-xl px-4 py-2 rounded-xl text-[10px] text-blue-200 flex items-center gap-2 shadow-2xl">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
