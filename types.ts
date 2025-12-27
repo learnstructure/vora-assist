@@ -45,6 +45,7 @@ export interface Message {
   timestamp: number;
   sources?: string[];
   groundingSources?: GroundingSource[];
+  isStreaming?: boolean;
 }
 
 export interface ChatSession {

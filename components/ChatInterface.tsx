@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Message, UserProfile, Document, DocumentChunk, AIProvider, GroqModel, AIResponse } from '../types';
+import { Message, UserProfile, Document, DocumentChunk, AIProvider, GroqModel, AIResponse, GroundingSource } from '../types';
 import { geminiService } from '../services/geminiService';
 import { groqService } from '../services/groqService';
 import { marked } from 'marked';
@@ -129,8 +129,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    const userMsgId = Date.now().toString();
+    const aiMsgId = (Date.now() + 1).toString();
+
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: userMsgId,
       role: 'user',
       content: input,
       timestamp: Date.now(),
@@ -147,6 +150,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setMessages(prev => [...(Array.isArray(prev) ? prev : []), userMessage]);
     }
 
+    // Add placeholder for AI message with streaming flag
+    const aiPlaceholder: Message = {
+      id: aiMsgId,
+      role: 'model',
+      content: '',
+      timestamp: Date.now(),
+      isStreaming: true,
+    };
+    setMessages(prev => [...(Array.isArray(prev) ? prev : []), aiPlaceholder]);
+
     try {
       const relevantChunks = await performSemanticRetrieval(currentInput);
       const allDocTitles = documents.map(d => d.title);
@@ -156,34 +169,37 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         setIsSearchingWeb(true);
       }
 
-      let response: AIResponse;
       const activeHistory = !currentChatId ? [] : safeMessages;
 
       if (provider === 'groq') {
-        response = await groqService.askGroq(currentInput, activeHistory, profile, relevantChunks, allDocTitles, groqModel);
+        const stream = groqService.askGroqStream(currentInput, activeHistory, profile, relevantChunks, allDocTitles, groqModel);
+        for await (const chunk of stream) {
+          setMessages(prev => prev.map(m =>
+            m.id === aiMsgId ? { ...m, content: chunk.text, sources: chunk.sources } : m
+          ));
+        }
       } else {
-        response = await geminiService.askVora(currentInput, activeHistory, profile, relevantChunks, allDocTitles, useWebSearch);
+        const stream = geminiService.askVoraStream(currentInput, activeHistory, profile, relevantChunks, allDocTitles, useWebSearch);
+        for await (const chunk of stream) {
+          setIsSearchingWeb(false); // Hide the status once we start getting tokens
+          setMessages(prev => prev.map(m =>
+            m.id === aiMsgId ? {
+              ...m,
+              content: chunk.text,
+              sources: chunk.sources,
+              groundingSources: chunk.groundingSources
+            } : m
+          ));
+        }
       }
 
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        content: response.text,
-        timestamp: Date.now(),
-        sources: response.sources,
-        groundingSources: response.groundingSources,
-      };
-
-      setMessages(prev => [...(Array.isArray(prev) ? prev : []), aiMessage]);
+      // Clear streaming flag when finished
+      setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, isStreaming: false } : m));
     } catch (err: any) {
       console.error(err);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        content: `Intelligence sync failed: ${err.message || "Unknown error"}.`,
-        timestamp: Date.now(),
-      };
-      setMessages(prev => [...(Array.isArray(prev) ? prev : []), errorMessage]);
+      setMessages(prev => prev.map(m =>
+        m.id === aiMsgId ? { ...m, content: `Intelligence sync failed: ${err.message || "Unknown error"}.`, isStreaming: false } : m
+      ));
     } finally {
       setIsLoading(false);
       setRetrieving(false);
@@ -238,7 +254,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
                   : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-400 hover:border-slate-700'
                 }`}
-              title={useWebSearch ? "Web Search Enabled (Paid Tier)" : "Enable Web Search (Paid Tier Required)"}
+              title={useWebSearch ? "Web Search Enabled" : "Enable Web Search"}
             >
               <svg className={`w-3.5 h-3.5 transition-transform duration-500 ${useWebSearch ? 'rotate-12 scale-110' : 'group-hover:rotate-12'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
@@ -288,10 +304,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 {msg.role === 'user' ? (
                   <div className="whitespace-pre-wrap">{msg.content}</div>
                 ) : (
-                  <div
-                    className="markdown-content"
-                    dangerouslySetInnerHTML={renderMarkdown(msg.content)}
-                  />
+                  msg.content === '' && msg.isStreaming ? (
+                    <div className="flex gap-1.5 py-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-600 animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-600 animate-bounce [animation-delay:0.2s]"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-600 animate-bounce [animation-delay:0.4s]"></div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <div
+                        className="markdown-content inline"
+                        dangerouslySetInnerHTML={renderMarkdown(msg.content)}
+                      />
+                      {msg.isStreaming && <span className="typing-cursor"></span>}
+                    </div>
+                  )
                 )}
               </div>
 
@@ -337,18 +364,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <span className={`w-1 h-1 rounded-full animate-pulse delay-75 ${isSearchingWeb ? 'bg-cyan-500' : 'bg-blue-500/40'}`}></span>
               </div>
               {isSearchingWeb ? 'Consulting the Web...' : 'Retrieving context...'}
-            </div>
-          </div>
-        )}
-
-        {isLoading && !retrieving && !isSearchingWeb && (
-          <div className="flex justify-start">
-            <div className="bg-[#0f172a] border border-[#1e293b] px-6 py-4 rounded-2xl rounded-tl-none opacity-50">
-              <div className="flex gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-600 animate-bounce"></div>
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-600 animate-bounce [animation-delay:0.2s]"></div>
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-600 animate-bounce [animation-delay:0.4s]"></div>
-              </div>
             </div>
           </div>
         )}

@@ -1,21 +1,21 @@
 
-import { UserProfile, Message, DocumentChunk, GroqModel, AIResponse } from '../types';
+import { UserProfile, Message, DocumentChunk, GroqModel, GroundingSource } from '../types';
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
 export const groqService = {
-  askGroq: async (
+  askGroqStream: async function* (
     query: string,
     history: Message[],
     profile: UserProfile,
     relevantChunks: DocumentChunk[],
     allDocTitles: string[] = [],
     model: GroqModel = 'llama-3.3-70b-versatile'
-  ): Promise<AIResponse> => {
+  ): AsyncGenerator<{ text: string; sources: string[] }> {
     const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
-      throw new Error("Groq API Key is missing. Please set GROQ_API_KEY.");
+      throw new Error("Groq API Key is missing.");
     }
 
     const systemInstruction = `
@@ -28,13 +28,12 @@ export const groqService = {
       Technical Stack: ${profile.technicalStack.join(', ')}
 
       ### OPERATIONAL DIRECTIVE
-      - Use the provided context to tailor your expertise level and tone.
-      - If the user asks for help with their work or goals, refer to the identity profile.
-      - If the query is unrelated to the user's personal context (e.g., general knowledge, math, simple tasks), answer directly without mentioning or forcing a connection to the identity profile.
-      - Build on the conversation history for continuity.
+      - Use context for tone and expertise level.
+      - If unrelated to user context, answer directly without mentions of the profile.
+      - Build on history for continuity.
 
       ### MEMORY BANK (PRIVATE LIBRARY)
-      Library Index: ${allDocTitles.length > 0 ? allDocTitles.join(', ') : 'No documents uploaded yet.'}
+      Index: ${allDocTitles.length > 0 ? allDocTitles.join(', ') : 'None'}
 
       ### RETRIEVED SNIPPETS
       ${relevantChunks.length > 0
@@ -52,35 +51,61 @@ export const groqService = {
       { role: 'user', content: query }
     ];
 
+    const sources = Array.from(new Set(relevantChunks.map(c => c.docTitle)));
+
+    const response = await fetch(GROQ_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: true,
+        temperature: model === 'openai/gpt-oss-120b' ? 0.4 : 0.6,
+        max_tokens: 4096
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData?.error?.message || `Groq API Error: ${response.statusText}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("Could not initialize stream reader.");
+
+    const decoder = new TextDecoder();
+    let fullText = "";
+
     try {
-      const response = await fetch(GROQ_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: model,
-          messages,
-          stream: false,
-          temperature: model === 'openai/gpt-oss-120b' ? 0.4 : 0.6,
-          max_tokens: 4096
-        })
-      });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData?.error?.message || `Groq API Error: ${response.statusText}`);
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed === 'data: [DONE]') continue;
+          if (trimmed.startsWith('data: ')) {
+            try {
+              const json = JSON.parse(trimmed.slice(6));
+              const content = json.choices[0]?.delta?.content || "";
+              if (content) {
+                fullText += content;
+                yield { text: fullText, sources };
+              }
+            } catch (e) {
+              // Ignore partial JSON chunks
+            }
+          }
+        }
       }
-
-      const data = await response.json();
-      const text = data.choices[0].message.content;
-      const sources = Array.from(new Set(relevantChunks.map(c => c.docTitle)));
-
-      return { text, sources, groundingSources: undefined };
-    } catch (error) {
-      console.error("Groq Service Error:", error);
-      throw error;
+    } finally {
+      reader.releaseLock();
     }
   }
 };

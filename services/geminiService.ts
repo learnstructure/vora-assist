@@ -49,14 +49,14 @@ export const geminiService = {
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   },
 
-  askVora: async (
+  askVoraStream: async function* (
     query: string,
     history: Message[],
     profile: UserProfile,
     relevantChunks: DocumentChunk[],
     allDocTitles: string[] = [],
     useSearch: boolean = false
-  ): Promise<AIResponse> => {
+  ): AsyncGenerator<{ text: string; groundingSources?: GroundingSource[]; sources: string[] }> {
     if (!process.env.API_KEY) throw new Error("Gemini API Key is missing.");
 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -71,23 +71,23 @@ export const geminiService = {
       Expertise Stack: ${profile.technicalStack.join(', ') || 'General Knowledge'}
 
       ### OPERATIONAL DIRECTIVE
-      1. Use the "USER CONTEXT" to inform your perspective, tone, and the sophistication of your technical explanations.
-      2. If a query relates to the user's goals or work, prioritize suggestions that align with their mission.
-      3. CRITICAL: If a query is general, factual, or unrelated to the user's profile, answer it directly and efficiently. Do NOT force a connection to the user's bio if it is irrelevant to the specific question.
-      4. Use the conversation history to maintain continuity.
+      1. Use "USER CONTEXT" to inform perspective, tone, and sophistication.
+      2. If query relates to user's goals/work, prioritize mission-aligned suggestions.
+      3. CRITICAL: If query is general/unrelated, answer directly and efficiently. Do NOT force bio connections.
+      4. Use conversation history for continuity.
 
       ### MEMORY BANK OVERVIEW (PRIVATE DATA)
       Total Documents: ${allDocTitles.length}
       Library Index: ${allDocTitles.length > 0 ? allDocTitles.join(', ') : 'Empty'}
 
       ### SEMANTIC SEARCH RESULTS
-      The following are excerpts from the user's private library that matched the query:
+      Excerpts from user's private library:
       ${relevantChunks.length > 0
         ? relevantChunks.map(chunk => `[Source: ${chunk.docTitle}]: ${chunk.text}`).join('\n\n')
         : 'NO LOCAL DATA MATCHED.'
       }
 
-      ${useSearch ? '### WEB SEARCH PROTOCOL\n- Use Google Search if private data is insufficient or real-time info is needed.' : ''}
+      ${useSearch ? '### WEB SEARCH PROTOCOL\n- Use Google Search if private data is insufficient.' : ''}
     `.trim();
 
     const contents = history.slice(-12).map(msg => ({
@@ -100,6 +100,8 @@ export const geminiService = {
       parts: [{ text: query }]
     });
 
+    const sources = Array.from(new Set(relevantChunks.map(c => c.docTitle)));
+
     try {
       const config: any = {
         systemInstruction,
@@ -110,36 +112,39 @@ export const geminiService = {
         config.tools = [{ googleSearch: {} }];
       }
 
-      const response: GenerateContentResponse = await ai.models.generateContent({
+      const result = await ai.models.generateContentStream({
         model: CHAT_MODEL,
         contents,
         config
       });
 
-      const text = response.text || "I'm sorry, I couldn't generate a response.";
-      const sources = Array.from(new Set(relevantChunks.map(c => c.docTitle)));
+      let fullText = "";
+      let groundingSources: GroundingSource[] = [];
 
-      const groundingSources: GroundingSource[] = [];
-      const metadata = response.candidates?.[0]?.groundingMetadata;
+      for await (const chunk of result) {
+        const textChunk = chunk.text || "";
+        fullText += textChunk;
 
-      if (metadata?.groundingChunks) {
-        metadata.groundingChunks.forEach((chunk: any) => {
-          if (chunk.web && chunk.web.uri) {
-            groundingSources.push({
-              title: chunk.web.title || 'Web Source',
-              url: chunk.web.uri
-            });
-          }
-        });
+        // Extract grounding if available in this chunk
+        const metadata = chunk.candidates?.[0]?.groundingMetadata;
+        if (metadata?.groundingChunks) {
+          metadata.groundingChunks.forEach((c: any) => {
+            if (c.web && c.web.uri) {
+              const exists = groundingSources.some(gs => gs.url === c.web.uri);
+              if (!exists) {
+                groundingSources.push({
+                  title: c.web.title || 'Web Source',
+                  url: c.web.uri
+                });
+              }
+            }
+          });
+        }
+
+        yield { text: fullText, groundingSources: groundingSources.length > 0 ? groundingSources : undefined, sources };
       }
-
-      return {
-        text,
-        sources,
-        groundingSources: groundingSources.length > 0 ? groundingSources : undefined
-      };
     } catch (error: any) {
-      console.error("Gemini Error:", error);
+      console.error("Gemini Streaming Error:", error);
       throw error;
     }
   }

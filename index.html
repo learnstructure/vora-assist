@@ -176,6 +176,31 @@
             font-size: 0.8em;
             line-height: 1.5;
         }
+
+        /* Streaming Cursor Animation */
+        .typing-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 15px;
+            background-color: #3b82f6;
+            /* blue-500 */
+            margin-left: 4px;
+            vertical-align: middle;
+            animation: blink 0.8s infinite;
+            border-radius: 1px;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
     </style>
     <script type="importmap">
 {
