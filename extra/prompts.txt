@@ -52,4 +52,9 @@ I have important follow up question. What if I want to continue the chat some ti
 
 I have next question. Do the models tend to tie every queries with the information from Identity section, even if they are irrelevant? 
 
+I think gemini does not offer google grounding on free tier. So the gemini API stopped working. Can you remove the google search as default option for geminiService? I think it would be better to add google search as an option, so when I letter move to the paid tier, google search would work.
 
+Perfect. Its working. Now I want to improve this feature. Even the long generated answer appears at once, which does not look very appealing. Can we make it look like they are being written in real time like what they do in the professional apps like ChatGPT or gemini?
+
+Yet to ask:
+Dynamic memory

@@ -54,7 +54,8 @@ export const geminiService = {
     history: Message[],
     profile: UserProfile,
     relevantChunks: DocumentChunk[],
-    allDocTitles: string[] = []
+    allDocTitles: string[] = [],
+    useSearch: boolean = false
   ): Promise<AIResponse> => {
     if (!process.env.API_KEY) throw new Error("Gemini API Key is missing.");
 
@@ -86,8 +87,7 @@ export const geminiService = {
         : 'NO LOCAL DATA MATCHED.'
       }
 
-      ### WEB SEARCH PROTOCOL
-      - Use Google Search if private data is insufficient or real-time info is needed.
+      ${useSearch ? '### WEB SEARCH PROTOCOL\n- Use Google Search if private data is insufficient or real-time info is needed.' : ''}
     `.trim();
 
     const contents = history.slice(-12).map(msg => ({
@@ -101,14 +101,19 @@ export const geminiService = {
     });
 
     try {
+      const config: any = {
+        systemInstruction,
+        temperature: 0.5,
+      };
+
+      if (useSearch) {
+        config.tools = [{ googleSearch: {} }];
+      }
+
       const response: GenerateContentResponse = await ai.models.generateContent({
         model: CHAT_MODEL,
         contents,
-        config: {
-          systemInstruction,
-          temperature: 0.5,
-          tools: [{ googleSearch: {} }]
-        }
+        config
       });
 
       const text = response.text || "I'm sorry, I couldn't generate a response.";

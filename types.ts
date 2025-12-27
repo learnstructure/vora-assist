@@ -66,4 +66,5 @@ export interface AppState {
   groqModel: GroqModel;
   sessions: ChatSession[];
   currentChatId: string | null;
+  useWebSearch: boolean;
 }

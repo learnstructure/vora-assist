@@ -25,6 +25,10 @@ const App: React.FC = () => {
     (localStorage.getItem('vora_groq_model') as GroqModel) || 'llama-3.3-70b-versatile'
   );
 
+  const [useWebSearch, setUseWebSearch] = useState<boolean>(
+    localStorage.getItem('vora_use_web_search') === 'true'
+  );
+
   // Initial load with defensive checks
   useEffect(() => {
     const loadData = async () => {
@@ -92,6 +96,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('vora_groq_model', groqModel);
   }, [groqModel]);
+
+  useEffect(() => {
+    localStorage.setItem('vora_use_web_search', useWebSearch.toString());
+  }, [useWebSearch]);
 
   useEffect(() => {
     if (currentChatId) {
@@ -200,6 +208,8 @@ const App: React.FC = () => {
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             currentChatId={currentChatId}
             onFirstMessage={handleFirstMessageSent}
+            useWebSearch={useWebSearch}
+            setUseWebSearch={setUseWebSearch}
           />
         )}
 

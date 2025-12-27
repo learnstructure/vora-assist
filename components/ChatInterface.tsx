@@ -16,6 +16,8 @@ interface ChatInterfaceProps {
   toggleSidebar?: () => void;
   currentChatId: string | null;
   onFirstMessage: (m: Message) => void;
+  useWebSearch: boolean;
+  setUseWebSearch: (val: boolean) => void;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -28,7 +30,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   groqModel,
   toggleSidebar,
   currentChatId,
-  onFirstMessage
+  onFirstMessage,
+  useWebSearch,
+  setUseWebSearch
 }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -148,7 +152,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const allDocTitles = documents.map(d => d.title);
       setRetrieving(false);
 
-      if (relevantChunks.length === 0 && provider === 'gemini') {
+      if (relevantChunks.length === 0 && provider === 'gemini' && useWebSearch) {
         setIsSearchingWeb(true);
       }
 
@@ -158,7 +162,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       if (provider === 'groq') {
         response = await groqService.askGroq(currentInput, activeHistory, profile, relevantChunks, allDocTitles, groqModel);
       } else {
-        response = await geminiService.askVora(currentInput, activeHistory, profile, relevantChunks, allDocTitles);
+        response = await geminiService.askVora(currentInput, activeHistory, profile, relevantChunks, allDocTitles, useWebSearch);
       }
 
       const aiMessage: Message = {
@@ -219,14 +223,31 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <span className="text-[9px] lg:text-[10px] text-blue-500/80 font-bold uppercase tracking-[0.2em] mt-0.5">Brain Active</span>
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-2 lg:gap-4">
+        <div className="ml-auto flex items-center gap-2 lg:gap-5">
           {showHistoryIndicator && (
             <span className="text-[9px] font-black text-green-500 uppercase tracking-widest animate-fade-in flex items-center gap-1.5 mr-2">
               <span className="w-1 h-1 rounded-full bg-green-500"></span>
-              Session Context Restored
+              Context Restored
             </span>
           )}
-          <span className={`text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-xl border flex items-center gap-2 ${provider === 'gemini' ? 'text-blue-500/60 border-blue-500/20 bg-blue-500/5' : 'text-orange-500/60 border-orange-500/20 bg-orange-500/5'
+
+          {provider === 'gemini' && (
+            <button
+              onClick={() => setUseWebSearch(!useWebSearch)}
+              className={`group flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all ${useWebSearch
+                  ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                  : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-400 hover:border-slate-700'
+                }`}
+              title={useWebSearch ? "Web Search Enabled (Paid Tier)" : "Enable Web Search (Paid Tier Required)"}
+            >
+              <svg className={`w-3.5 h-3.5 transition-transform duration-500 ${useWebSearch ? 'rotate-12 scale-110' : 'group-hover:rotate-12'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
+              <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">{useWebSearch ? 'Web ON' : 'Web OFF'}</span>
+            </button>
+          )}
+
+          <span className={`text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl border flex items-center gap-2 ${provider === 'gemini' ? 'text-blue-500/60 border-blue-500/20 bg-blue-500/5' : 'text-orange-500/60 border-orange-500/20 bg-orange-500/5'
             }`}>
             {provider === 'gemini' ? 'Gemini 3 Flash' : (
               <>
