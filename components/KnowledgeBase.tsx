@@ -149,8 +149,8 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
         <div>
-          <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tighter mb-2 uppercase italic">Memory Bank</h1>
-          <p className="text-slate-500 text-sm font-medium">Embeddings via Gemini • {provider.toUpperCase()} Logic.</p>
+          <h1 className="text-3xl lg:text-4xl font-black text-[var(--text-heading)] tracking-tighter mb-2 uppercase italic">Memory Bank</h1>
+          <p className="text-[var(--text-main)] text-sm font-medium opacity-70">Embeddings via Gemini • {provider.toUpperCase()} Logic.</p>
         </div>
 
         <div className="flex gap-3 w-full sm:w-auto">
@@ -169,7 +169,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
       </div>
 
       {isProcessing && (
-        <div className="mb-8 p-6 border rounded-[1.5rem] flex items-center gap-4 animate-pulse bg-blue-900/10 border-blue-500/20 text-blue-300">
+        <div className="mb-8 p-6 border rounded-[1.5rem] flex items-center gap-4 animate-pulse bg-blue-900/10 border-blue-500/20 text-blue-500">
           <div className="w-6 h-6 border-2 rounded-full animate-spin border-blue-500 border-t-transparent"></div>
           <span className="text-[11px] font-black tracking-widest uppercase">{progress}</span>
         </div>
@@ -177,33 +177,33 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
 
       {isDragging && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-600/10 backdrop-blur-sm pointer-events-none">
-          <div className="bg-slate-900 border-2 border-dashed border-blue-500 p-20 rounded-[4rem] shadow-2xl flex flex-col items-center gap-6">
+          <div className="bg-[var(--bg-card)] border-2 border-dashed border-blue-500 p-20 rounded-[4rem] shadow-2xl flex flex-col items-center gap-6">
             <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-white">
               <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
             </div>
-            <p className="text-2xl font-black text-white uppercase tracking-tighter">Drop to index files</p>
+            <p className="text-2xl font-black text-[var(--text-heading)] uppercase tracking-tighter">Drop to index files</p>
           </div>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-24">
         {documents.length === 0 ? (
-          <div className="col-span-full py-40 border-2 border-dashed border-slate-800 rounded-[3rem] flex flex-col items-center justify-center text-slate-600 group hover:border-blue-500/30 transition-all">
-            <div className="w-24 h-24 rounded-full bg-slate-900/50 flex items-center justify-center mb-8 border border-slate-800 group-hover:scale-110 group-hover:bg-blue-900/10 transition-all duration-500">
+          <div className="col-span-full py-40 border-2 border-dashed border-[var(--border-muted)] rounded-[3rem] flex flex-col items-center justify-center text-[var(--text-main)] group hover:border-blue-500/30 transition-all">
+            <div className="w-24 h-24 rounded-full bg-[var(--bg-card)]/50 flex items-center justify-center mb-8 border border-[var(--border-muted)] group-hover:scale-110 group-hover:bg-blue-900/10 transition-all duration-500">
               <svg className="w-10 h-10 opacity-20 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
             </div>
-            <p className="text-xl font-black text-slate-400 tracking-tight uppercase">Memory is Empty</p>
-            <p className="text-sm mt-3 text-slate-600 px-10 text-center font-medium max-w-sm leading-relaxed">
+            <p className="text-xl font-black text-[var(--text-heading)] opacity-40 tracking-tight uppercase">Memory is Empty</p>
+            <p className="text-sm mt-3 text-[var(--text-main)] px-10 text-center font-medium max-w-sm leading-relaxed opacity-60">
               Drag and drop files here or click Upload to index your private documents.
             </p>
           </div>
         ) : (
           documents.map(doc => (
-            <div key={doc.id} className="bg-slate-900/40 border border-slate-800/80 rounded-[2rem] p-7 hover:bg-slate-900/80 hover:border-slate-700 transition-all group relative overflow-hidden shadow-sm">
+            <div key={doc.id} className="bg-[var(--bg-card)] border border-[var(--border-muted)] rounded-[2rem] p-7 hover:border-blue-500/30 transition-all group relative overflow-hidden shadow-sm">
               <div className="flex items-start justify-between mb-8">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg ${doc.type === 'pdf' ? 'bg-red-500/10 text-red-500' :
                     doc.type === 'docx' ? 'bg-blue-500/10 text-blue-500' :
-                      doc.type === 'html' ? 'bg-orange-500/10 text-orange-500' : 'bg-slate-800/50 text-slate-400'
+                      doc.type === 'html' ? 'bg-orange-500/10 text-orange-500' : 'bg-[var(--bg-sidebar)] text-[var(--text-main)]'
                   }`}>
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 </div>
@@ -214,7 +214,7 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
                     e.stopPropagation();
                     deleteDoc(doc.id);
                   }}
-                  className="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-slate-500 hover:text-red-500 hover:border-red-500/30 transition-all relative z-30"
+                  className="p-3 rounded-2xl bg-[var(--bg-deep)] border border-[var(--border-muted)] text-[var(--text-main)] hover:text-red-500 hover:border-red-500/30 transition-all relative z-30"
                   title="Delete from memory"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -222,17 +222,17 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, setDocuments, 
               </div>
 
               <div className="space-y-2">
-                <h3 className="font-black text-slate-100 truncate text-lg" title={doc.title}>{doc.title}</h3>
-                <p className="text-xs text-slate-500 line-clamp-2 font-medium leading-relaxed mb-6">
+                <h3 className="font-black text-[var(--text-heading)] truncate text-lg" title={doc.title}>{doc.title}</h3>
+                <p className="text-xs text-[var(--text-main)] line-clamp-2 font-medium leading-relaxed mb-6 opacity-80">
                   {doc.content.substring(0, 180)}...
                 </p>
               </div>
 
-              <div className="flex items-center justify-between border-t border-slate-800/50 pt-6 mt-6">
+              <div className="flex items-center justify-between border-t border-[var(--border-muted)] pt-6 mt-6">
                 <div className="flex gap-2">
-                  <span className="text-[8px] px-2 py-0.5 rounded-lg bg-slate-950 text-slate-400 font-black tracking-widest uppercase border border-slate-800">{doc.type}</span>
+                  <span className="text-[8px] px-2 py-0.5 rounded-lg bg-[var(--bg-sidebar)] text-[var(--text-main)] font-black tracking-widest uppercase border border-[var(--border-muted)]">{doc.type}</span>
                 </div>
-                <span className="text-[10px] text-slate-700 font-black uppercase tracking-tight">
+                <span className="text-[10px] text-[var(--text-main)] opacity-40 font-black uppercase tracking-tight">
                   {new Date(doc.createdAt).toLocaleDateString()}
                 </span>
               </div>

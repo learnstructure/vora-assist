@@ -15,19 +15,41 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <style>
         :root {
+            /* Default Dark Theme Variables */
             --bg-deep: #020617;
-            /* slate-950 */
+            --bg-sidebar: #030712;
             --bg-card: #0f172a;
-            /* slate-900 */
+            --bg-input: #0f172a;
+            --bg-code: #0b0f1a;
             --border-muted: #1e293b;
-            /* slate-800 */
+            --text-main: #94a3b8;
+            --text-heading: #e2e8f0;
+            --text-bold: #cbd5e1;
+            --text-code: #7dd3fc;
+            --accent-primary: #3b82f6;
+            --scrollbar-thumb: #1e293b;
+        }
+
+        .light-theme {
+            --bg-deep: #f8fafc;
+            --bg-sidebar: #f1f5f9;
+            --bg-card: #ffffff;
+            --bg-input: #ffffff;
+            --bg-code: #f1f5f9;
+            --border-muted: #e2e8f0;
+            --text-main: #475569;
+            --text-heading: #1e293b;
+            --text-bold: #0f172a;
+            --text-code: #0369a1;
+            --accent-primary: #2563eb;
+            --scrollbar-thumb: #cbd5e1;
         }
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-deep);
-            color: #94a3b8;
-            /* Softened global text color */
+            color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .mono {
@@ -39,24 +61,19 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: var(--bg-deep);
+            background: transparent;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #1e293b;
+            background: var(--scrollbar-thumb);
             border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #334155;
         }
 
         /* Markdown Styling */
         .markdown-content h1,
         .markdown-content h2,
         .markdown-content h3 {
-            color: #e2e8f0;
-            /* Soft slate-200 for headings */
+            color: var(--text-heading);
             font-weight: 700;
             margin-top: 1.5rem;
             margin-bottom: 0.75rem;
@@ -79,7 +96,7 @@
         .markdown-content p {
             margin-bottom: 1rem;
             line-height: 1.6;
-            color: #94a3b8;
+            color: var(--text-main);
         }
 
         .markdown-content p:last-child {
@@ -102,12 +119,11 @@
 
         .markdown-content li {
             margin-bottom: 0.5rem;
-            color: #94a3b8;
+            color: var(--text-main);
         }
 
-        /* Softened bold text */
         .markdown-content strong {
-            color: #cbd5e1;
+            color: var(--text-bold);
             font-weight: 600;
         }
 
@@ -117,8 +133,8 @@
             margin: 1.25rem 0;
             border-radius: 0.5rem;
             overflow: hidden;
-            background-color: #0b0f1a;
-            border: 1px solid #1e293b;
+            background-color: var(--bg-code);
+            border: 1px solid var(--border-muted);
         }
 
         .copy-button {
@@ -126,14 +142,14 @@
             top: 0.5rem;
             right: 0.5rem;
             padding: 0.35rem 0.6rem;
-            background: #1e293b;
-            color: #64748b;
+            background: var(--border-muted);
+            color: var(--text-main);
             font-size: 9px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             border-radius: 0.4rem;
-            border: 1px solid #334155;
+            border: 1px solid var(--border-muted);
             cursor: pointer;
             transition: all 0.2s;
             opacity: 0.6;
@@ -142,17 +158,6 @@
 
         .code-block-wrapper:hover .copy-button {
             opacity: 1;
-        }
-
-        .copy-button:hover {
-            background: #334155;
-            color: #f1f5f9;
-        }
-
-        .copy-button.copied {
-            background: #059669;
-            color: white;
-            border-color: #059669;
         }
 
         .markdown-content pre {
@@ -164,17 +169,17 @@
 
         .markdown-content code {
             font-family: 'JetBrains Mono', monospace;
-            background-color: #1e293b/30;
+            background-color: var(--bg-code);
             padding: 0.15rem 0.35rem;
             border-radius: 0.3rem;
             font-size: 0.85em;
-            color: #7dd3fc;
+            color: var(--text-code);
         }
 
         .markdown-content pre code {
             background-color: transparent;
             padding: 0;
-            color: #cbd5e1;
+            color: var(--text-heading);
             font-size: 0.8em;
             line-height: 1.5;
         }
@@ -192,16 +197,15 @@
 
         .katex {
             font-size: 1.1em;
-            color: #e2e8f0;
+            color: var(--text-heading);
         }
 
-        /* Streaming Cursor Animation */
+        /* Streaming Cursor */
         .typing-cursor {
             display: inline-block;
             width: 8px;
             height: 15px;
-            background-color: #3b82f6;
-            /* blue-500 */
+            background-color: var(--accent-primary);
             margin-left: 4px;
             vertical-align: middle;
             animation: blink 0.8s infinite;
@@ -218,6 +222,10 @@
             50% {
                 opacity: 0;
             }
+        }
+
+        .sidebar-transition {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
     </style>
     <script type="importmap">
@@ -238,7 +246,7 @@
 </script>
 </head>
 
-<body class="overflow-hidden bg-[#020617]">
+<body class="overflow-hidden">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>

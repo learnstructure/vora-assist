@@ -60,5 +60,16 @@ Right now equation does not gets rendered properly. Equation looks like this: "$
 
 Okay everything is working now. Now I was thinking of adding light mode as well. Is there easy way to add button to switch between light theme and dark theme? If yes, then please do it.
 
+Okay looks good. But I think you also need to update KnowledgeBase.tsx & ProfileEditor.tsx to adapt to light mode.
+
+I think "BRAIN CONFIG" at bottom of sidebar is redundant. I wanted to replace that by a button "How to use this app button" so that when user clicks that buttom, a window appears saying:
+How to use?
+1. Upload the docs
+2. Update Identity, 
+and so on.
+Then 
+Developed by: Abinash Mandal (LinkedIn: https://www.linkedin.com/in/abinash-mandal-90132b238/)
+Or do it in better way if you can?
+
 Yet to ask:
 Dynamic memory

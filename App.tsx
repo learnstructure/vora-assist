@@ -17,6 +17,10 @@ const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const [theme, setTheme] = useState<'light' | 'dark'>(
+    (localStorage.getItem('vora_theme') as 'light' | 'dark') || 'dark'
+  );
+
   const [provider, setProvider] = useState<AIProvider>(
     (localStorage.getItem('vora_provider') as AIProvider) || 'groq'
   );
@@ -29,7 +33,7 @@ const App: React.FC = () => {
     localStorage.getItem('vora_use_web_search') === 'true'
   );
 
-  // Initial load with defensive checks
+  // Initial load
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -39,20 +43,17 @@ const App: React.FC = () => {
           storageService.getChatSessions()
         ]);
 
-        // Filter out malformed sessions to prevent UI crashes
         const validSessions = (storedSessions || []).filter(s => s && s.id && Array.isArray(s.messages));
 
         setDocuments(docs || []);
         setChunks(storedChunks || []);
         setSessions(validSessions);
 
-        // Load specific chat if ID exists and is valid
         if (currentChatId) {
           const session = await storageService.getChatSession(currentChatId);
           if (session && Array.isArray(session.messages)) {
             setMessages(session.messages);
           } else {
-            console.warn("Session invalid or missing, resetting active chat");
             setCurrentChatId(null);
             setMessages([]);
             localStorage.removeItem('vora_active_chat');
@@ -67,7 +68,12 @@ const App: React.FC = () => {
     loadData();
   }, []);
 
-  // Sync messages of active chat to storage
+  // Save theme
+  useEffect(() => {
+    localStorage.setItem('vora_theme', theme);
+  }, [theme]);
+
+  // Sync active chat
   useEffect(() => {
     if (currentChatId && messages.length > 0) {
       const activeSessionSnippet = sessions.find(s => s.id === currentChatId);
@@ -166,7 +172,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 flex bg-zinc-950 text-zinc-200 overflow-hidden antialiased">
+    <div className={`fixed inset-0 flex overflow-hidden antialiased ${theme === 'dark' ? 'dark-theme' : 'light-theme'}`}>
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
@@ -192,10 +198,12 @@ const App: React.FC = () => {
           onSelectSession={handleSelectSession}
           onNewChat={handleNewChat}
           onDeleteSession={handleDeleteSession}
+          theme={theme}
+          setTheme={setTheme}
         />
       </div>
 
-      <main className="flex-1 h-full relative overflow-hidden flex flex-col min-w-0">
+      <main className="flex-1 h-full relative overflow-hidden flex flex-col min-w-0 bg-[var(--bg-deep)]">
         {activeTab === 'chat' && (
           <ChatInterface
             messages={messages}
@@ -215,11 +223,11 @@ const App: React.FC = () => {
 
         {activeTab === 'knowledge' && (
           <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-            <div className="lg:hidden h-14 border-b border-zinc-800 flex items-center px-4 bg-zinc-950/80 backdrop-blur-md z-20 flex-shrink-0">
-              <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-zinc-400">
+            <div className="lg:hidden h-14 border-b border-[var(--border-muted)] flex items-center px-4 bg-[var(--bg-sidebar)]/80 backdrop-blur-md z-20 flex-shrink-0">
+              <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-[var(--text-main)]">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
               </button>
-              <span className="ml-2 font-bold text-sm text-zinc-200 uppercase tracking-widest">Memory Bank</span>
+              <span className="ml-2 font-bold text-sm text-[var(--text-heading)] uppercase tracking-widest">Memory Bank</span>
             </div>
             <div className="flex-1 overflow-y-auto">
               <KnowledgeBase
@@ -234,11 +242,11 @@ const App: React.FC = () => {
 
         {activeTab === 'profile' && (
           <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-            <div className="lg:hidden h-14 border-b border-zinc-800 flex items-center px-4 bg-zinc-950/80 backdrop-blur-md z-20 flex-shrink-0">
-              <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-zinc-400">
+            <div className="lg:hidden h-14 border-b border-[var(--border-muted)] flex items-center px-4 bg-[var(--bg-sidebar)]/80 backdrop-blur-md z-20 flex-shrink-0">
+              <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-[var(--text-main)]">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
               </button>
-              <span className="ml-2 font-bold text-sm text-zinc-200 uppercase tracking-widest">Persona</span>
+              <span className="ml-2 font-bold text-sm text-[var(--text-heading)] uppercase tracking-widest">Persona</span>
             </div>
             <div className="flex-1 overflow-y-auto">
               <ProfileEditor
@@ -252,13 +260,13 @@ const App: React.FC = () => {
 
       <div className="fixed bottom-4 right-4 z-[60] flex flex-col items-end gap-2 pointer-events-none">
         {isGeminiMissing() && (
-          <div className="bg-blue-950/80 border border-blue-500/30 backdrop-blur-xl px-4 py-2 rounded-xl text-[10px] text-blue-200 flex items-center gap-2 shadow-2xl">
+          <div className="bg-blue-600/10 border border-blue-500/30 backdrop-blur-xl px-4 py-2 rounded-xl text-[10px] text-blue-500 font-bold flex items-center gap-2 shadow-2xl">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
             GEMINI REQ FOR MEMORY
           </div>
         )}
         {isChatProviderMissing() && (
-          <div className="bg-red-950/80 border border-red-500/30 backdrop-blur-xl px-4 py-2 rounded-xl text-[10px] text-red-200 flex items-center gap-2 shadow-2xl">
+          <div className="bg-red-600/10 border border-red-500/30 backdrop-blur-xl px-4 py-2 rounded-xl text-[10px] text-red-500 font-bold flex items-center gap-2 shadow-2xl">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
             {provider.toUpperCase()} CHAT OFFLINE
           </div>

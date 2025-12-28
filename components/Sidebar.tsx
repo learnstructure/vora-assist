@@ -15,6 +15,8 @@ interface SidebarProps {
   onSelectSession: (id: string) => void;
   onNewChat: () => void;
   onDeleteSession: (id: string) => void;
+  theme: 'light' | 'dark';
+  setTheme: (t: 'light' | 'dark') => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -29,7 +31,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   currentChatId,
   onSelectSession,
   onNewChat,
-  onDeleteSession
+  onDeleteSession,
+  theme,
+  setTheme
 }) => {
   const navItems = [
     {
@@ -52,7 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const safeSessions = Array.isArray(sessions) ? sessions.filter(s => s && s.id) : [];
 
   return (
-    <div className="flex flex-col h-full bg-[#030712] border-r border-slate-800/60 shadow-2xl lg:shadow-none">
+    <div className="flex flex-col h-full bg-[var(--bg-sidebar)] border-r border-[var(--border-muted)] shadow-2xl lg:shadow-none transition-colors duration-300">
       <div className="p-6 flex-1 flex flex-col min-h-0 overflow-hidden">
         <div className="flex items-center justify-between mb-8 flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -60,12 +64,12 @@ const Sidebar: React.FC<SidebarProps> = ({
               VA
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-black tracking-tighter text-white leading-none">VORA</span>
+              <span className="text-lg font-black tracking-tighter text-[var(--text-heading)] leading-none">VORA</span>
               <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest mt-0.5">Assist</span>
             </div>
           </div>
           {onClose && (
-            <button onClick={onClose} className="lg:hidden p-2 text-slate-500 hover:text-white transition-colors">
+            <button onClick={onClose} className="lg:hidden p-2 text-[var(--text-main)] hover:text-[var(--text-heading)] transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           )}
@@ -77,8 +81,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               key={item.id}
               onClick={() => setActiveTab(item.id as any)}
               className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 ${activeTab === item.id
-                  ? 'bg-slate-900 text-white border border-slate-800 shadow-xl'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900/30'
+                  ? 'bg-[var(--bg-card)] text-[var(--text-heading)] border border-[var(--border-muted)] shadow-xl'
+                  : 'text-[var(--text-main)] hover:text-[var(--text-heading)] hover:bg-[var(--bg-card)]/30'
                 }`}
             >
               <div className={`transition-colors ${activeTab === item.id ? 'text-blue-500' : ''}`}>
@@ -100,10 +104,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             </button>
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-              <label className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 block mb-2">History</label>
+              <label className="text-[9px] font-black text-[var(--text-main)]/50 uppercase tracking-[0.2em] px-4 block mb-2">History</label>
               {safeSessions.length === 0 ? (
-                <div className="px-4 py-8 text-center border-2 border-dashed border-slate-900 rounded-2xl">
-                  <p className="text-[10px] text-slate-700 font-bold uppercase tracking-widest">No Chats Yet</p>
+                <div className="px-4 py-8 text-center border-2 border-dashed border-[var(--border-muted)] rounded-2xl">
+                  <p className="text-[10px] text-[var(--text-main)]/40 font-bold uppercase tracking-widest">No Chats Yet</p>
                 </div>
               ) : (
                 safeSessions.map(session => (
@@ -111,12 +115,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <button
                       onClick={() => onSelectSession(session.id)}
                       className={`w-full text-left px-4 py-3 rounded-2xl transition-all group ${currentChatId === session.id
-                          ? 'bg-slate-900/50 border border-slate-800/50 text-blue-400'
-                          : 'text-slate-500 hover:bg-slate-900/20 hover:text-slate-300'
+                          ? 'bg-[var(--bg-card)]/50 border border-[var(--border-muted)] text-blue-500'
+                          : 'text-[var(--text-main)] hover:bg-[var(--bg-card)]/20 hover:text-[var(--text-heading)]'
                         }`}
                     >
                       <div className="text-xs font-bold truncate pr-6">{session.title || 'Untitled Chat'}</div>
-                      <div className="text-[8px] text-slate-700 font-black uppercase tracking-tighter mt-1">
+                      <div className="text-[8px] opacity-60 font-black uppercase tracking-tighter mt-1">
                         {session.updatedAt ? new Date(session.updatedAt).toLocaleDateString() : 'Recent'}
                       </div>
                     </button>
@@ -125,7 +129,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         e.stopPropagation();
                         onDeleteSession(session.id);
                       }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-800 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-[var(--text-main)] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
@@ -137,18 +141,32 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         <div className="mt-auto space-y-4 pt-6 flex-shrink-0">
-          <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.25em] px-4">Brain Config</label>
-          <div className="bg-slate-950 p-1.5 rounded-2xl border border-slate-900 flex flex-col gap-1.5 shadow-inner">
+          <div className="flex items-center justify-between px-4">
+            <label className="text-[10px] font-black text-[var(--text-main)]/50 uppercase tracking-[0.25em]">Brain Config</label>
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-muted)] text-[var(--text-main)] hover:text-[var(--text-heading)] transition-all shadow-sm active:scale-95"
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === 'dark' ? (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+              )}
+            </button>
+          </div>
+
+          <div className="bg-[var(--bg-card)] p-1.5 rounded-2xl border border-[var(--border-muted)] flex flex-col gap-1.5 shadow-inner transition-colors duration-300">
             <div className="flex gap-1.5">
               <button
                 onClick={() => setProvider('gemini')}
-                className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${provider === 'gemini' ? 'bg-slate-900 text-blue-400 shadow-md ring-1 ring-white/5' : 'text-slate-600 hover:text-slate-500'}`}
+                className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${provider === 'gemini' ? 'bg-[var(--bg-sidebar)] text-blue-500 shadow-md ring-1 ring-white/5' : 'text-[var(--text-main)] hover:text-[var(--text-heading)]'}`}
               >
                 Gemini
               </button>
               <button
                 onClick={() => setProvider('groq')}
-                className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${provider === 'groq' ? 'bg-slate-900 text-orange-400 shadow-md ring-1 ring-white/5' : 'text-slate-600 hover:text-slate-500'}`}
+                className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${provider === 'groq' ? 'bg-[var(--bg-sidebar)] text-orange-500 shadow-md ring-1 ring-white/5' : 'text-[var(--text-main)] hover:text-[var(--text-heading)]'}`}
               >
                 Groq
               </button>
@@ -156,19 +174,19 @@ const Sidebar: React.FC<SidebarProps> = ({
 
             {provider === 'groq' && (
               <div className="flex flex-col gap-1 px-1 pb-1 animate-fade-in">
-                <div className="h-px bg-slate-900 my-1 mx-2" />
+                <div className="h-px bg-[var(--border-muted)] my-1 mx-2" />
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => setGroqModel('llama-3.3-70b-versatile')}
-                    className={`flex-1 py-1.5 rounded-lg text-[8px] font-black transition-all uppercase tracking-widest ${groqModel === 'llama-3.3-70b-versatile' ? 'text-slate-100 bg-slate-800 ring-1 ring-slate-700' : 'text-slate-600'}`}
+                    className={`flex-1 py-1.5 rounded-lg text-[8px] font-black transition-all uppercase tracking-widest ${groqModel === 'llama-3.3-70b-versatile' ? 'text-[var(--text-heading)] bg-[var(--bg-sidebar)] ring-1 ring-[var(--border-muted)]' : 'text-[var(--text-main)]'}`}
                   >
                     Llama 3.3
                   </button>
                   <button
                     onClick={() => setGroqModel('openai/gpt-oss-120b')}
-                    className={`flex-1 py-1.5 rounded-lg text-[8px] font-black transition-all uppercase tracking-widest ${groqModel === 'openai/gpt-oss-120b' ? 'text-purple-400 bg-slate-800 ring-1 ring-purple-500/20 shadow-[0_0_10px_rgba(168,85,247,0.1)]' : 'text-slate-600'}`}
+                    className={`flex-1 py-1.5 rounded-lg text-[8px] font-black transition-all uppercase tracking-widest ${groqModel === 'openai/gpt-oss-120b' ? 'text-purple-500 bg-[var(--bg-sidebar)] ring-1 ring-purple-500/20' : 'text-[var(--text-main)]'}`}
                   >
-                    GPT OSS 120B
+                    GPT OSS
                   </button>
                 </div>
               </div>
