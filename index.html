@@ -11,6 +11,8 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
+    <!-- KaTeX for Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <style>
         :root {
             --bg-deep: #020617;
@@ -103,7 +105,7 @@
             color: #94a3b8;
         }
 
-        /* Softened bold text to match the low-contrast requirement */
+        /* Softened bold text */
         .markdown-content strong {
             color: #cbd5e1;
             font-weight: 600;
@@ -177,6 +179,22 @@
             line-height: 1.5;
         }
 
+        /* Math Styling */
+        .math-block {
+            padding: 1.5rem 0;
+            overflow-x: auto;
+            text-align: center;
+        }
+
+        .katex-display {
+            margin: 0 !important;
+        }
+
+        .katex {
+            font-size: 1.1em;
+            color: #e2e8f0;
+        }
+
         /* Streaming Cursor Animation */
         .typing-cursor {
             display: inline-block;
@@ -213,7 +231,8 @@
     "mammoth": "https://esm.sh/mammoth@^1.11.0",
     "vite": "https://esm.sh/vite@^7.3.0",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "marked": "https://esm.sh/marked@^15.0.0"
+    "marked": "https://esm.sh/marked@^15.0.0",
+    "katex": "https://esm.sh/katex@^0.16.11"
   }
 }
 </script>

@@ -56,5 +56,9 @@ I think gemini does not offer google grounding on free tier. So the gemini API s
 
 Perfect. Its working. Now I want to improve this feature. Even the long generated answer appears at once, which does not look very appealing. Can we make it look like they are being written in real time like what they do in the professional apps like ChatGPT or gemini?
 
+Right now equation does not gets rendered properly. Equation looks like this: "$L_p$" Can you improve that? 
+
+Okay everything is working now. Now I was thinking of adding light mode as well. Is there easy way to add button to switch between light theme and dark theme? If yes, then please do it.
+
 Yet to ask:
 Dynamic memory

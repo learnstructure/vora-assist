@@ -4,6 +4,7 @@ import { Message, UserProfile, Document, DocumentChunk, AIProvider, GroqModel, A
 import { geminiService } from '../services/geminiService';
 import { groqService } from '../services/groqService';
 import { marked } from 'marked';
+import katex from 'katex';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -64,7 +65,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }, []);
 
   useEffect(() => {
+    // Configure marked with high-precision math and code blocks
     const renderer = new marked.Renderer();
+
+    // 1. Code Block Customization
     renderer.code = ({ text, lang }) => {
       const id = `code-${Math.random().toString(36).substr(2, 9)}`;
       return `
@@ -74,7 +78,58 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       `;
     };
-    marked.setOptions({ renderer });
+
+    // 2. Math Extension Integration
+    marked.use({
+      renderer,
+      extensions: [
+        {
+          name: 'inlineMath',
+          level: 'inline',
+          start(src) { return src.indexOf('$'); },
+          tokenizer(src) {
+            const match = src.match(/^\$([^$]+)\$/);
+            if (match) {
+              return {
+                type: 'inlineMath',
+                raw: match[0],
+                text: match[1].trim()
+              };
+            }
+          },
+          renderer(token) {
+            try {
+              return katex.renderToString(token.text, { displayMode: false, throwOnError: false });
+            } catch (e) {
+              return token.raw;
+            }
+          }
+        },
+        {
+          name: 'blockMath',
+          level: 'block',
+          start(src) { return src.indexOf('$$'); },
+          tokenizer(src) {
+            const match = src.match(/^\$\$([\s\S]+?)\$\$/);
+            if (match) {
+              return {
+                type: 'blockMath',
+                raw: match[0],
+                text: match[1].trim()
+              };
+            }
+          },
+          renderer(token) {
+            try {
+              const html = katex.renderToString(token.text, { displayMode: true, throwOnError: false });
+              return `<div class="math-block">${html}</div>`;
+            } catch (e) {
+              return `<div class="math-block">${token.raw}</div>`;
+            }
+          }
+        }
+      ]
+    });
 
     (window as any).copyToClipboard = (btn: HTMLButtonElement, codeId: string) => {
       const codeElement = document.getElementById(codeId);
@@ -181,7 +236,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       } else {
         const stream = geminiService.askVoraStream(currentInput, activeHistory, profile, relevantChunks, allDocTitles, useWebSearch);
         for await (const chunk of stream) {
-          setIsSearchingWeb(false); // Hide the status once we start getting tokens
+          setIsSearchingWeb(false);
           setMessages(prev => prev.map(m =>
             m.id === aiMsgId ? {
               ...m,
@@ -193,7 +248,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         }
       }
 
-      // Clear streaming flag when finished
       setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, isStreaming: false } : m));
     } catch (err: any) {
       console.error(err);
@@ -209,7 +263,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const renderMarkdown = (content: string) => {
     try {
-      return { __html: marked.parse(content) };
+      return { __html: marked.parse(content) as string };
     } catch (e) {
       return { __html: content };
     }
