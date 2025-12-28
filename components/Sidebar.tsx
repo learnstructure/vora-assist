@@ -1,14 +1,10 @@
 
 import React from 'react';
-import { AIProvider, ChatSession, GroqModel } from '../types';
+import { ChatSession } from '../types';
 
 interface SidebarProps {
   activeTab: 'chat' | 'knowledge' | 'profile';
   setActiveTab: (tab: 'chat' | 'knowledge' | 'profile') => void;
-  provider: AIProvider;
-  setProvider: (p: AIProvider) => void;
-  groqModel: GroqModel;
-  setGroqModel: (m: GroqModel) => void;
   onClose?: () => void;
   sessions: ChatSession[];
   currentChatId: string | null;
@@ -17,15 +13,12 @@ interface SidebarProps {
   onDeleteSession: (id: string) => void;
   theme: 'light' | 'dark';
   setTheme: (t: 'light' | 'dark') => void;
+  openInfo: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
-  provider,
-  setProvider,
-  groqModel,
-  setGroqModel,
   onClose,
   sessions = [],
   currentChatId,
@@ -33,7 +26,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onNewChat,
   onDeleteSession,
   theme,
-  setTheme
+  setTheme,
+  openInfo
 }) => {
   const navItems = [
     {
@@ -68,11 +62,24 @@ const Sidebar: React.FC<SidebarProps> = ({
               <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest mt-0.5">Assist</span>
             </div>
           </div>
-          {onClose && (
-            <button onClick={onClose} className="lg:hidden p-2 text-[var(--text-main)] hover:text-[var(--text-heading)] transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-muted)] text-[var(--text-main)] hover:text-[var(--text-heading)] transition-all shadow-sm active:scale-95"
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === 'dark' ? (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+              )}
             </button>
-          )}
+            {onClose && (
+              <button onClick={onClose} className="lg:hidden p-2 text-[var(--text-main)] hover:text-[var(--text-heading)] transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
+          </div>
         </div>
 
         <nav className="space-y-1 mb-6 flex-shrink-0">
@@ -140,58 +147,19 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        <div className="mt-auto space-y-4 pt-6 flex-shrink-0">
-          <div className="flex items-center justify-between px-4">
-            <label className="text-[10px] font-black text-[var(--text-main)]/50 uppercase tracking-[0.25em]">Brain Config</label>
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-muted)] text-[var(--text-main)] hover:text-[var(--text-heading)] transition-all shadow-sm active:scale-95"
-              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              {theme === 'dark' ? (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-              ) : (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
-              )}
-            </button>
-          </div>
-
-          <div className="bg-[var(--bg-card)] p-1.5 rounded-2xl border border-[var(--border-muted)] flex flex-col gap-1.5 shadow-inner transition-colors duration-300">
-            <div className="flex gap-1.5">
-              <button
-                onClick={() => setProvider('gemini')}
-                className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${provider === 'gemini' ? 'bg-[var(--bg-sidebar)] text-blue-500 shadow-md ring-1 ring-white/5' : 'text-[var(--text-main)] hover:text-[var(--text-heading)]'}`}
-              >
-                Gemini
-              </button>
-              <button
-                onClick={() => setProvider('groq')}
-                className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${provider === 'groq' ? 'bg-[var(--bg-sidebar)] text-orange-500 shadow-md ring-1 ring-white/5' : 'text-[var(--text-main)] hover:text-[var(--text-heading)]'}`}
-              >
-                Groq
-              </button>
+        <div className="mt-auto pt-6 flex-shrink-0">
+          <button
+            onClick={openInfo}
+            className="w-full group flex items-center gap-3 px-4 py-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-muted)] text-[var(--text-main)] hover:text-[var(--text-heading)] hover:border-blue-500/30 transition-all shadow-xl shadow-black/5 active:scale-[0.98]"
+          >
+            <div className="w-8 h-8 rounded-xl bg-[var(--bg-sidebar)] border border-[var(--border-muted)] flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
-
-            {provider === 'groq' && (
-              <div className="flex flex-col gap-1 px-1 pb-1 animate-fade-in">
-                <div className="h-px bg-[var(--border-muted)] my-1 mx-2" />
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => setGroqModel('llama-3.3-70b-versatile')}
-                    className={`flex-1 py-1.5 rounded-lg text-[8px] font-black transition-all uppercase tracking-widest ${groqModel === 'llama-3.3-70b-versatile' ? 'text-[var(--text-heading)] bg-[var(--bg-sidebar)] ring-1 ring-[var(--border-muted)]' : 'text-[var(--text-main)]'}`}
-                  >
-                    Llama 3.3
-                  </button>
-                  <button
-                    onClick={() => setGroqModel('openai/gpt-oss-120b')}
-                    className={`flex-1 py-1.5 rounded-lg text-[8px] font-black transition-all uppercase tracking-widest ${groqModel === 'openai/gpt-oss-120b' ? 'text-purple-500 bg-[var(--bg-sidebar)] ring-1 ring-purple-500/20' : 'text-[var(--text-main)]'}`}
-                  >
-                    GPT OSS
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+            <div className="flex flex-col items-start">
+              <span className="text-[10px] font-black uppercase tracking-widest">How to Use</span>
+              <span className="text-[8px] opacity-50 font-bold uppercase tracking-tighter">System Info & Help</span>
+            </div>
+          </button>
         </div>
       </div>
     </div>

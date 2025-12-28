@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import KnowledgeBase from './components/KnowledgeBase';
 import ProfileEditor from './components/ProfileEditor';
+import InfoModal from './components/InfoModal';
 import { UserProfile, Document, Message, DocumentChunk, AIProvider, ChatSession, GroqModel } from './types';
 import { storageService } from './services/storageService';
 
@@ -16,6 +17,7 @@ const App: React.FC = () => {
   const [currentChatId, setCurrentChatId] = useState<string | null>(localStorage.getItem('vora_active_chat'));
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(
     (localStorage.getItem('vora_theme') as 'light' | 'dark') || 'dark'
@@ -188,10 +190,6 @@ const App: React.FC = () => {
         <Sidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          provider={provider}
-          setProvider={setProvider}
-          groqModel={groqModel}
-          setGroqModel={setGroqModel}
           onClose={() => setIsSidebarOpen(false)}
           sessions={sessions}
           currentChatId={currentChatId}
@@ -200,6 +198,7 @@ const App: React.FC = () => {
           onDeleteSession={handleDeleteSession}
           theme={theme}
           setTheme={setTheme}
+          openInfo={() => setIsInfoModalOpen(true)}
         />
       </div>
 
@@ -257,6 +256,15 @@ const App: React.FC = () => {
           </div>
         )}
       </main>
+
+      <InfoModal
+        isOpen={isInfoModalOpen}
+        onClose={() => setIsInfoModalOpen(false)}
+        provider={provider}
+        setProvider={setProvider}
+        groqModel={groqModel}
+        setGroqModel={setGroqModel}
+      />
 
       <div className="fixed bottom-4 right-4 z-[60] flex flex-col items-end gap-2 pointer-events-none">
         {isGeminiMissing() && (
