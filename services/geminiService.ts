@@ -115,12 +115,14 @@ export const geminiService = {
       User: ${profile.name || 'Partner'}
       Role: ${profile.role || 'Expert'}
       Mission: ${profile.bio || 'General Intelligence Support'}
+      Stack: ${profile.technicalStack.join(', ') || 'General Technical'}
 
       ### OPERATIONAL DIRECTIVE
-      1. Use "USER CONTEXT" for perspective.
+      1. Use "USER CONTEXT" if necessary for perspective and tone.
       2. Priority: Private Memory. If Memory Bank snippets are provided, treat them as the absolute truth for this user.
       3. For technical/math queries, use LaTeX.
-
+      4. Maintain professional, high-fidelity continuity based on the conversation history.
+      
       ### MEMORY BANK (PRIVATE DATA)
       Total Documents: ${allDocTitles.length}
       Snippets Provided: ${relevantChunks.length}

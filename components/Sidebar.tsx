@@ -88,8 +88,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               key={item.id}
               onClick={() => setActiveTab(item.id as any)}
               className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 ${activeTab === item.id
-                  ? 'bg-[var(--bg-card)] text-[var(--text-heading)] border border-[var(--border-muted)] shadow-xl'
-                  : 'text-[var(--text-main)] hover:text-[var(--text-heading)] hover:bg-[var(--bg-card)]/30'
+                ? 'bg-[var(--bg-card)] text-[var(--text-heading)] border border-[var(--border-muted)] shadow-xl'
+                : 'text-[var(--text-main)] hover:text-[var(--text-heading)] hover:bg-[var(--bg-card)]/30'
                 }`}
             >
               <div className={`transition-colors ${activeTab === item.id ? 'text-blue-500' : ''}`}>
@@ -122,8 +122,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <button
                       onClick={() => onSelectSession(session.id)}
                       className={`w-full text-left px-4 py-3 rounded-2xl transition-all group ${currentChatId === session.id
-                          ? 'bg-[var(--bg-card)]/50 border border-[var(--border-muted)] text-blue-500'
-                          : 'text-[var(--text-main)] hover:bg-[var(--bg-card)]/20 hover:text-[var(--text-heading)]'
+                        ? 'bg-[var(--bg-card)]/50 border border-[var(--border-muted)] text-blue-500'
+                        : 'text-[var(--text-main)] hover:bg-[var(--bg-card)]/20 hover:text-[var(--text-heading)]'
                         }`}
                     >
                       <div className="text-xs font-bold truncate pr-6">{session.title || 'Untitled Chat'}</div>
@@ -157,7 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="flex flex-col items-start">
               <span className="text-[10px] font-black uppercase tracking-widest">How to Use</span>
-              <span className="text-[8px] opacity-50 font-bold uppercase tracking-tighter">System Info & Help</span>
+              <span className="text-[8px] opacity-50 font-bold uppercase tracking-tighter">System Guide & Control</span>
             </div>
           </button>
         </div>
