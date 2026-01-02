@@ -1,38 +1,85 @@
 
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { UserProfile, Message, DocumentChunk, GroundingSource, AIResponse } from '../types';
+import { GoogleGenAI, Type } from "@google/genai";
+import { UserProfile, Message, DocumentChunk, GroundingSource } from '../types';
 
 const CHAT_MODEL = 'gemini-3-flash-preview';
+const VISION_MODEL = 'gemini-3-flash-preview';
 const EMBEDDING_MODEL = 'text-embedding-004';
 
 export const geminiService = {
-  getEmbedding: async (text: string, isQuery: boolean = false): Promise<number[]> => {
-    if (!process.env.API_KEY) throw new Error("Gemini API Key is missing. Gemini is required for document indexing (Memory Bank).");
+  getEmbedding: async (text: string): Promise<number[]> => {
+    if (!process.env.API_KEY) throw new Error("Gemini API Key is missing. Gemini is required for document indexing.");
 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     try {
+      // Use 'contents' (plural) for embedding requests as per latest SDK/compiler requirements
       const response = await ai.models.embedContent({
         model: EMBEDDING_MODEL,
         contents: [{ parts: [{ text }] }],
-        config: {
-          taskType: isQuery ? 'RETRIEVAL_QUERY' : 'RETRIEVAL_DOCUMENT',
-        },
       });
 
-      if (!response.embeddings || response.embeddings.length === 0) {
-        throw new Error("No embedding returned from Gemini.");
+      // Access plural 'embeddings' array and return values from the first element
+      // Added explicit check for 'values' to satisfy TypeScript's strict null checks
+      if (!response.embeddings || response.embeddings.length === 0 || !response.embeddings[0].values) {
+        throw new Error("No valid embedding values returned from Gemini.");
       }
 
-      const values = response.embeddings[0].values;
-      if (!values) {
-        throw new Error("Embedding response contained no vector values.");
-      }
-
-      return values;
+      return response.embeddings[0].values;
     } catch (error: any) {
       console.error("Gemini Embedding Error:", error);
       throw new Error(error.message || "Failed to generate embedding");
+    }
+  },
+
+  processPageWithVision: async (base64Image: string): Promise<string> => {
+    if (!process.env.API_KEY) throw new Error("API Key missing");
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    const prompt = "Convert this document page into high-fidelity Markdown. EXTREMELY IMPORTANT: 1. Convert all mathematical equations to LaTeX format using $ or $$ delimiters. 2. Preserve tables using Markdown table syntax. 3. Maintain structural headers (# ## ###). 4. Do not summarize; transcribe accurately.";
+
+    const response = await ai.models.generateContent({
+      model: VISION_MODEL,
+      contents: {
+        parts: [
+          { inlineData: { data: base64Image, mimeType: 'image/jpeg' } },
+          { text: prompt }
+        ]
+      }
+    });
+
+    return response.text || "";
+  },
+
+  rerankChunks: async (query: string, chunks: DocumentChunk[]): Promise<DocumentChunk[]> => {
+    if (chunks.length <= 3) return chunks;
+    if (!process.env.API_KEY) return chunks;
+
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    const chunkContext = chunks.map((c, i) => `[ID: ${i}] [Doc: ${c.docTitle}]: ${c.text}`).join('\n\n');
+
+    const prompt = `User Query: "${query}"\n\nBelow are the top relevant snippets from the user's memory. Rank them based on how well they answer the query, prioritizing technical accuracy and mathematical relevance. Return only the top 3 IDs as a JSON array of numbers.\n\nSnippets:\n${chunkContext}`;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: CHAT_MODEL,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: { type: Type.INTEGER }
+          },
+          thinkingConfig: { thinkingBudget: 2000 }
+        }
+      });
+
+      const topIndices: number[] = JSON.parse(response.text || "[]");
+      return topIndices.map(idx => chunks[idx]).filter(Boolean);
+    } catch (err) {
+      console.warn("Reranking failed, falling back to vector score", err);
+      return chunks.slice(0, 3);
     }
   },
 
@@ -64,24 +111,20 @@ export const geminiService = {
     const systemInstruction = `
       You are VORA Assist, a high-fidelity Intelligent Partner.
       
-      ### USER CONTEXT (BACKGROUND)
-      User Name: ${profile.name || 'Kaelen Voss'}
-      Current Role: ${profile.role || 'User'}
-      BIO, GOALS & MISSION: ${profile.bio || 'General Support'}
-      Expertise Stack: ${profile.technicalStack.join(', ') || 'General Knowledge'}
+      ### USER CONTEXT
+      User: ${profile.name || 'Partner'}
+      Role: ${profile.role || 'Expert'}
+      Mission: ${profile.bio || 'General Intelligence Support'}
 
       ### OPERATIONAL DIRECTIVE
-      1. Use "USER CONTEXT" to inform perspective, tone, and sophistication.
-      2. If query relates to user's goals/work, prioritize mission-aligned suggestions.
-      3. CRITICAL: If query is general/unrelated, answer directly and efficiently. Do NOT force bio connections.
-      4. Use conversation history for continuity.
+      1. Use "USER CONTEXT" for perspective.
+      2. Priority: Private Memory. If Memory Bank snippets are provided, treat them as the absolute truth for this user.
+      3. For technical/math queries, use LaTeX.
 
-      ### MEMORY BANK OVERVIEW (PRIVATE DATA)
+      ### MEMORY BANK (PRIVATE DATA)
       Total Documents: ${allDocTitles.length}
-      Library Index: ${allDocTitles.length > 0 ? allDocTitles.join(', ') : 'Empty'}
-
-      ### SEMANTIC SEARCH RESULTS
-      Excerpts from user's private library:
+      Snippets Provided: ${relevantChunks.length}
+      
       ${relevantChunks.length > 0
         ? relevantChunks.map(chunk => `[Source: ${chunk.docTitle}]: ${chunk.text}`).join('\n\n')
         : 'NO LOCAL DATA MATCHED.'
@@ -105,7 +148,7 @@ export const geminiService = {
     try {
       const config: any = {
         systemInstruction,
-        temperature: 0.5,
+        temperature: 0.3,
       };
 
       if (useSearch) {
@@ -125,7 +168,6 @@ export const geminiService = {
         const textChunk = chunk.text || "";
         fullText += textChunk;
 
-        // Extract grounding if available in this chunk
         const metadata = chunk.candidates?.[0]?.groundingMetadata;
         if (metadata?.groundingChunks) {
           metadata.groundingChunks.forEach((c: any) => {

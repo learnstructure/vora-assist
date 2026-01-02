@@ -1,4 +1,5 @@
 
+// Fix: Removed the unnecessary second argument from the getEmbedding call.
 import React, { useState, useRef, useEffect } from 'react';
 import { Message, UserProfile, Document, DocumentChunk, AIProvider, GroqModel, AIResponse, GroundingSource } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -38,6 +39,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [retrieving, setRetrieving] = useState(false);
+  const [isReranking, setIsReranking] = useState(false);
   const [isSearchingWeb, setIsSearchingWeb] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showHistoryIndicator, setShowHistoryIndicator] = useState(false);
@@ -65,7 +67,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }, []);
 
   useEffect(() => {
-    // Configure marked with high-precision math and code blocks
     const renderer = new marked.Renderer();
 
     renderer.code = ({ text, lang }) => {
@@ -135,10 +136,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         navigator.clipboard.writeText(codeElement.innerText).then(() => {
           const originalText = btn.innerText;
           btn.innerText = 'Copied!';
-          btn.classList.add('copied');
           setTimeout(() => {
             btn.innerText = originalText;
-            btn.classList.remove('copied');
           }, 2000);
         });
       }
@@ -149,7 +148,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [safeMessages, isLoading, retrieving, isSearchingWeb]);
+  }, [safeMessages, isLoading, retrieving, isSearchingWeb, isReranking]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -158,24 +157,48 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   }, [input]);
 
-  const performSemanticRetrieval = async (query: string): Promise<DocumentChunk[]> => {
+  const performHybridRetrieval = async (query: string): Promise<DocumentChunk[]> => {
     if (cachedChunks.length === 0) return [];
 
     try {
-      const queryEmbedding = await geminiService.getEmbedding(query, true);
+      // Fix: Removed the unnecessary second argument from the getEmbedding call
+      const queryEmbedding = await geminiService.getEmbedding(query);
+      const queryWords = query.toLowerCase().split(/\W+/).filter(w => w.length > 2);
+
       const scoredChunks = cachedChunks.map(chunk => {
-        const similarity = geminiService.cosineSimilarity(queryEmbedding, chunk.embedding);
-        return { chunk, score: similarity };
+        // Vector Score
+        const vectorSimilarity = geminiService.cosineSimilarity(queryEmbedding, chunk.embedding);
+
+        // Text Match Score (Keyword match)
+        let textScore = 0;
+        const chunkTextLower = chunk.text.toLowerCase();
+        queryWords.forEach(word => {
+          if (chunkTextLower.includes(word)) textScore += 0.15;
+        });
+
+        const hybridScore = (vectorSimilarity * 0.7) + (textScore * 0.3);
+        return { chunk, score: hybridScore };
       });
 
-      return scoredChunks
-        .filter(item => item.score > 0.35)
+      const topCandidates = scoredChunks
+        .filter(item => item.score > 0.3)
         .sort((a, b) => b.score - a.score)
-        .slice(0, 6)
+        .slice(0, 15)
         .map(item => item.chunk);
+
+      if (topCandidates.length > 0) {
+        setIsReranking(true);
+        const refined = await geminiService.rerankChunks(query, topCandidates);
+        setIsReranking(false);
+        return refined;
+      }
+
+      return [];
     } catch (e) {
       console.warn("Memory retrieval paused", e);
       return [];
+    } finally {
+      setIsReranking(false);
     }
   };
 
@@ -200,7 +223,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (!currentChatId) {
       onFirstMessage(userMessage);
     } else {
-      setMessages(prev => [...(Array.isArray(prev) ? prev : []), userMessage]);
+      setMessages(prev => [...prev, userMessage]);
     }
 
     const aiPlaceholder: Message = {
@@ -210,10 +233,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       timestamp: Date.now(),
       isStreaming: true,
     };
-    setMessages(prev => [...(Array.isArray(prev) ? prev : []), aiPlaceholder]);
+    setMessages(prev => [...prev, aiPlaceholder]);
 
     try {
-      const relevantChunks = await performSemanticRetrieval(currentInput);
+      const relevantChunks = await performHybridRetrieval(currentInput);
       const allDocTitles = documents.map(d => d.title);
       setRetrieving(false);
 
@@ -255,6 +278,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setIsLoading(false);
       setRetrieving(false);
       setIsSearchingWeb(false);
+      setIsReranking(false);
     }
   };
 
@@ -275,7 +299,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-deep)] relative overflow-hidden antialiased overscroll-none transition-colors duration-300">
-      <div className="flex-shrink-0 h-14 lg:h-16 border-b border-[var(--border-muted)] flex items-center px-4 lg:px-8 bg-[var(--bg-sidebar)]/40 backdrop-blur-xl z-20 shadow-sm transition-colors duration-300">
+      <div className="flex-shrink-0 h-14 lg:h-16 border-b border-[var(--border-muted)] flex items-center px-4 lg:px-8 bg-[var(--bg-sidebar)]/40 backdrop-blur-xl z-20 shadow-sm">
         <div className="flex items-center gap-3">
           {toggleSidebar && (
             <button
@@ -336,8 +360,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <h3 className="text-xl font-bold text-[var(--text-heading)] tracking-tight">Your Intelligent Assistant</h3>
               <p className="text-[var(--text-main)] text-[13px] font-medium leading-relaxed px-4 opacity-70">
                 {documents.length > 0
-                  ? `Accessing ${documents.length} specialized documents for context-aware responses.`
-                  : "Upload documents to the Memory Bank to activate high-precision intelligence."
+                  ? `VORA is using Hybrid Retrieval across ${documents.length} structured documents.`
+                  : "Upload documents to the Memory Bank. They will be parsed with Vision for high precision."
                 }
               </p>
             </div>
@@ -406,14 +430,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         ))}
 
-        {(retrieving || isSearchingWeb) && (
+        {(retrieving || isSearchingWeb || isReranking) && (
           <div className="flex justify-start">
-            <div className="flex items-center gap-3 bg-[var(--bg-card)]/40 border border-[var(--border-muted)] px-4 py-2 rounded-xl text-[9px] text-[var(--text-main)] font-bold tracking-widest uppercase">
+            <div className="flex items-center gap-3 bg-[var(--bg-card)]/40 border border-[var(--border-muted)] px-4 py-2 rounded-xl text-[9px] text-[var(--text-main)] font-bold tracking-widest uppercase shadow-sm">
               <div className="flex gap-1">
-                <span className={`w-1 h-1 rounded-full animate-pulse ${isSearchingWeb ? 'bg-cyan-500' : 'bg-blue-500/40'}`}></span>
-                <span className={`w-1 h-1 rounded-full animate-pulse delay-75 ${isSearchingWeb ? 'bg-cyan-500' : 'bg-blue-500/40'}`}></span>
+                <span className={`w-1 h-1 rounded-full animate-pulse ${isSearchingWeb ? 'bg-cyan-500' : isReranking ? 'bg-purple-500' : 'bg-blue-500/40'}`}></span>
+                <span className={`w-1 h-1 rounded-full animate-pulse delay-75 ${isSearchingWeb ? 'bg-cyan-500' : isReranking ? 'bg-purple-500' : 'bg-blue-500/40'}`}></span>
               </div>
-              {isSearchingWeb ? 'Consulting the Web...' : 'Retrieving context...'}
+              {isSearchingWeb ? 'Consulting the Web...' : isReranking ? 'Reasoning for Precision...' : 'Retrieving context...'}
             </div>
           </div>
         )}
@@ -431,7 +455,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Message VORA..."
+                placeholder="Ask VORA about your documents..."
                 className="flex-1 bg-transparent py-3 text-[14px] text-[var(--text-heading)] focus:outline-none placeholder:text-[var(--text-main)]/50 resize-none max-h-[180px] custom-scrollbar"
               />
               <button

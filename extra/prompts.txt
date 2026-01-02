@@ -71,5 +71,15 @@ Then
 Developed by: Abinash Mandal (LinkedIn: https://www.linkedin.com/in/abinash-mandal-90132b238/)
 Or do it in better way if you can?
 
-Yet to ask:
-Dynamic memory
+All of these improvements look appealing. Can you help me implement all? i.e.
+1. parsing using gemini vision
+2. chunking by splitting markdown headers
+3. Embedding with both vector and text index
+4. Retrieve using hybrid search + reranking
+
+Can you tell me if parsing is always done using gemini vision? If so, this is unnecessary as this vision parsing is extremely slow. What we could do is there should be a button in memory bank so that activates vision on. So this vision parsing is done only when requested by the user. Otherwise we can use parser as before.
+
+Also just to confirm, the file types like .txt, .docx, .py, .html, etc should always use standard parser and not the vision parser. Is it already implemented? If not, do this please.
+
+I still got those errors:
+
